@@ -3,3 +3,5 @@ debug
 release
 Makefile.Debug
 Makefile.Release
+object_script.DAS_New.Debug
+object_script.DAS_New.Release
