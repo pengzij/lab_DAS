@@ -1,3 +1,5 @@
 debug
 .vscode
 release
+Makefile.Debug
+Makefile.Release
