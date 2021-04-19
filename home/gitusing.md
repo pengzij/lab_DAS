@@ -4,3 +4,4 @@
 3. git rm test.cpp //删除文件
 4. git mv test.cpp .\home\test.cpp //重命名文件，或移动文件
 5. git reset --hard HEAD^ //回滚版本，回到上n个commit的版本(HEAD后面的^可以有n个)
+6. git reset --hard 8e1b577da4353e618ed358f46ed5ba567f8b04b9//输入log中对应版本的编号，可以只输入前7位
