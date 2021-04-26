@@ -18,7 +18,7 @@
 #include <QThreadPool>
 #include <QTime>
 #include "PeakSearch.h"
-#include "demodurunnable.h"
+
 
 #include "udpconnect.h"
 #include "CirQueue.h"

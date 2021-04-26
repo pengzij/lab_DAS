@@ -5,7 +5,7 @@
 #include "CirQueue1.h"
 
 
-#include"calculation.h"
+
 
 int t1=0,t2=0;
 using namespace std;

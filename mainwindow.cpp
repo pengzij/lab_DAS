@@ -30,7 +30,6 @@ MainWindow::MainWindow(QWidget *parent) :
     peak->Init(Config::instance(),hWnd);
     peak->ConfigDevice();
     is_peakExist = true;
-
 }
 
 MainWindow::~MainWindow()
