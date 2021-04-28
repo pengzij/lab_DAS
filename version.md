@@ -8,3 +8,5 @@
 1. 关闭无用按键
 2. 调用plot中的峰值确认函数
 3. 在sendPeakPosData()函数中结束if语句中加入发送 signal，该信号直接联通开始解调按键的槽函数。 
+## 其他
+1. DAS_New.pro 文件中加入 UI_DIR=./UI 实现ui_xxx.h文件存储在源程序文件夹UI。因为在添加UI组件时出现QT无法自动复写ui_xxx.h,因此可能需要手动复写。
