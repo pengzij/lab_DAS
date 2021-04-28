@@ -398,8 +398,8 @@ void Demodulation::ReadFilterCoeff(float *coeff,float *LPFcoeff)
     QString fileName;
     QString fileName2;
 
-    fileName = QString("ButtorWorthFilterCoefficient_")+QString::number((int)(frequency/1000))+QString("KHz_5Hz.bin");
-    fileName2 = QString("LPFilterCoefficient_")+QString::number((int)(frequency/1000))+QString("KHz_4KHz.bin");
+    fileName = QString("ButtorWorthFilterCoefficient_")+QString::number((int)(frequency/1000))+QString("KHz_150Hz.bin");
+    fileName2 = QString("LPFilterCoefficient_")+QString::number((int)(frequency/1000))+QString("KHz_1.5KHz.bin");
 
     QString pat = QString("C:/DAS/ButtorWorthFilterCoefficient/") + fileName;
     QString pat2 = QString("C:/DAS/ButtorWorthFilterCoefficient/") + fileName2;

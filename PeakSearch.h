@@ -85,8 +85,7 @@ public:
 
 	BYTE* RECORD_BUF;
 
-signals:
-    DataLenErrorSignal();
+
 };
 
 

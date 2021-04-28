@@ -13,8 +13,6 @@ Plot::Plot(QWidget *parent) :
 
     m_chart = new QChart;
 
-
-
     m_series = new QLineSeries;
     m_chart->addSeries(m_series);
 

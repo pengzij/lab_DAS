@@ -60,6 +60,8 @@ private slots:
 
     void on_Sound_Button_clicked();
 
+    void on_Eazystart_Button_clicked();
+
 private:
     Ui::MainWindow *ui;
     HWND hWnd;
@@ -85,6 +87,9 @@ private:
     wchar_t* c2w(const char* str);
 
     unsigned short saveCounter = 0;
+
+signals:
+    void sendPeakPosDone();
 };
 
 #endif // MAINWINDOW_H

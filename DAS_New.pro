@@ -65,3 +65,5 @@ DEPENDPATH += $$PWD/sdk
 unix|win32: LIBS += -lgdi32
 
 unix|win32: LIBS += -lwinmm
+
+UI_DIR=./UI

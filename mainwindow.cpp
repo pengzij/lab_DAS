@@ -73,7 +73,37 @@ MainWindow::~MainWindow()
     }
     qDebug() << "MainWindow deconstruct end" << endl;
 }
-void MainWindow::on_SearchPeak_Button_clicked()
+void MainWindow::on_Eazystart_Button_clicked()
+{
+    //关闭无关按键显示
+    ui->Demodu_Button->setEnabled(false);
+    ui->SearchPeak_Button->setEnabled(false);
+    ui->WatchPeak_Button->setEnabled(false);
+    ui->DemoduStop_Button->setEnabled(false);
+    //ui->Sound_Button->setEnabled(false);
+    //i->Play_Button->setEnabled(false);
+    qDebug() << "Eazystart_Button_clicked" << endl;
+
+    //实现查看峰值功能（关闭显示）
+    if(plt == NULL)
+    {
+        plt = new Plot();
+        connect(plt,SIGNAL(ResearchPeakSignal()),this,SLOT(ResearchPeak()));
+    }
+
+    //实现确认峰值按键功能
+    ConfirmPeakResult();
+    qDebug()<<"ConfirmPeak"<<endl;
+
+    connect(this, &MainWindow::sendPeakPosDone, this, &MainWindow::on_Demodu_Button_clicked);
+
+    QString info = QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\teazystart finish, demodulation running...");
+    ui->StateText->append(info);
+
+}
+
+
+void MainWindow::on_SearchPeak_Button_clicked()//开始寻峰 按钮按下
 {
     SystemTime = QTime::currentTime();
     QString info = QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\tStart SearchPeak...");
@@ -130,7 +160,7 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *r
     return false;
 }
 
-void MainWindow::on_WatchPeak_Button_clicked()
+void MainWindow::on_WatchPeak_Button_clicked()//查看峰值 按钮按下
 {
     if(plt == NULL)
     {
@@ -167,14 +197,11 @@ void MainWindow::ConfirmPeakResult()
         SendPeakPosTimer = new QTimer();
         sendPeakChannel = 0;
         peak->SendPeakPos(sendPeakChannel);
-        SendPeakPosTimer->start(1000);
+        SendPeakPosTimer->start(1000);//从peak.txt中读取的时间差
         connect(SendPeakPosTimer,&QTimer::timeout,this,&MainWindow::sendPeakPosData);
     }
     peak->savePeakNum(Config::instance());
     SystemTime = QTime::currentTime();
-
-//    QString info = SystemTime.toString()+QString("\tSend PeakPos Successfully!");
-//    ui->StateText->append(info);
 
 }
 
@@ -197,10 +224,12 @@ void MainWindow::sendPeakPosData()
         SendPeakPosTimer->stop();
         QString info = QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\tSend PeakPos Successfully!");
         ui->StateText->append(info);
+
+        emit sendPeakPosDone();
     }
 }
 
-void MainWindow::on_Demodu_Button_clicked()
+void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
 {
     if (is_peakExist)
     {
@@ -255,8 +284,7 @@ void MainWindow::on_Demodu_Button_clicked()
 
     Demodu->start();
 
-    waveWidget->show();
-
+    //waveWidget->show();//该界面还未实现
 
 }
 
