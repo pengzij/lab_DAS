@@ -19,6 +19,7 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QPushButton>
+#include <QtWidgets/QTextBrowser>
 #include <QtWidgets/QTextEdit>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
@@ -49,6 +50,8 @@ public:
     QGridLayout *gridLayout_7;
     QCheckBox *save_checkBox;
     QPushButton *Sound_Button;
+    QTextBrowser *textBrowser;
+    QLabel *speedLaber;
 
     void setupUi(QMainWindow *MainWindow)
     {
@@ -170,6 +173,12 @@ public:
 
         verticalLayout->addLayout(gridLayout);
 
+        textBrowser = new QTextBrowser(centralWidget);
+        textBrowser->setObjectName(QStringLiteral("textBrowser"));
+        textBrowser->setGeometry(QRect(620, 480, 101, 31));
+        speedLaber = new QLabel(centralWidget);
+        speedLaber->setObjectName(QStringLiteral("speedLaber"));
+        speedLaber->setGeometry(QRect(540, 479, 71, 31));
         MainWindow->setCentralWidget(centralWidget);
 
         retranslateUi(MainWindow);
@@ -189,6 +198,7 @@ public:
         regionText->setText(QApplication::translate("MainWindow", " \351\200\211\345\214\272", Q_NULLPTR));
         save_checkBox->setText(QApplication::translate("MainWindow", "\346\225\260\346\215\256\345\255\230\345\202\250", Q_NULLPTR));
         Sound_Button->setText(QApplication::translate("MainWindow", "\345\243\260\351\237\263\345\275\225\345\210\266", Q_NULLPTR));
+        speedLaber->setText(QApplication::translate("MainWindow", "\344\270\262\345\217\243\350\257\273\345\217\226\351\200\237\345\272\246", Q_NULLPTR));
     } // retranslateUi
 
 };

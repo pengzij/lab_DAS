@@ -51,16 +51,11 @@ int UDPConnect::sendData(CirQueue<float>* que,char dataType)
     {
         socket = new QUdpSocket();
     }
-//    if(data == NULL)
-//    {
-//        if(dataType == SEND_ORIGNAL_DATA)
-//            data = new QByteArray((PeakNum*3+8)*SENDSIZE,0);
-//        else
-//            data = new QByteArray((PeakNum+8)*SENDSIZE,0);
-//    }
+
     float *dat;
     int hasWrite = 0;
     int num = 0;
+
     if(dataType == SEND_ORIGNAL_DATA)
     {
         dat = new float[PeakNum*3]();
@@ -125,7 +120,7 @@ void UDPConnect::executeData()
 
 void UDPConnect::executeSendData(CirQueue<float>* que, char Type)
 {
-    qDebug() <<"UDP begin send data";
+    //qDebug() <<"UDP begin send data";
     //qDebug() <<"Current Thread:"<< QThread::currentThread();
 
     if(QueData == NULL)
@@ -152,11 +147,14 @@ void UDPConnect::executeSendData(CirQueue<float>* que, char Type)
     {
         //qDebug()<<"save data2Bin()  181" <<endl;
         saveData2Bin(QueData);
+
+
     }
 
     //loadSeriesData(Type);调用有时程序会未响应
     hasSend+= hasWrite;
 }
+
 void UDPConnect::initSeriesParam(
         QLineSeries *line1,
         QLineSeries *line2,
@@ -280,7 +278,7 @@ void UDPConnect::loadSeriesData(char dataType)
     delete[] dat;
 }
 
-void UDPConnect::saveData2Bin(float *data)
+void UDPConnect::saveData2Bin(float *data)//写入文件重写为ofstream
 {
     QMutexLocker locker1(&writeLock);
     if(DataType == SEND_ORIGNAL_DATA)

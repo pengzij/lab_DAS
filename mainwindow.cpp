@@ -15,6 +15,9 @@
 #pragma comment("winmm.lib")
 #pragma comment("gdi32.lib")
 
+#define DEBUGMODE 1
+#define RUNMODE 0
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -26,13 +29,16 @@ MainWindow::MainWindow(QWidget *parent) :
 
 
     string path = "C:/DAS/Config.txt";
-    string debugpath = "C:/DAS/debug.txt";
-    Config::instance()->Init(path);
-    Config::instance()->InitDebug(debugpath);
 
+    Config::instance()->Init(path);
     MinWignoreDevice = Config::instance()->m_Program->ignoreDevice();
+    CaculationPhase = Config::instance()->m_demodulation->getCacPhase();
     if( MinWignoreDevice == true )
     {
+        cout << "main37" << endl;
+        string debugpath = "C:/DAS/debug.txt";
+        Config::instance()->InitDebug(debugpath);
+
         PostMessage(hWnd, SERIAL_WRITE_CONFIG_COMMAND_FINISHED, 0, 0);
         qDebug() << "ignore peakInit and configDevice" << endl;
 
@@ -129,7 +135,7 @@ void MainWindow::on_Eazystart_Button_clicked()
         connect(this, &MainWindow::sendPeakPosDone, this, &MainWindow::on_Demodu_Button_clicked);
     }
 
-    QString info = QString("Version Inmormation: v0.2.1 \n") + QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\teazystart finish, demodulation running...");
+    QString info = QString("Version Inmormation: v0.4.1 \n") + QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\teazystart finish, demodulation running...");
     ui->StateText->append(info);
 
 }
@@ -248,6 +254,12 @@ void MainWindow::showText(QString text)
     ui->StateText->append(text);
 }
 
+void MainWindow::textbrowserShowSpeed(double speed)
+{
+    QString speedtext = QString::number(speed, 'g', 6) + "Mbps";
+    ui->textBrowser->setText(speedtext);
+}
+
 void MainWindow::sendPeakPosData()
 {
     if(peak->Series->isSendCommandSuccessful(4))
@@ -271,6 +283,18 @@ void MainWindow::sendPeakPosData()
     }
 }
 
+void MainWindow::isShowWindow(Demodulation *demodu)
+{
+    if(CaculationPhase)
+    {
+        //初始化波形显示窗口
+        wgt = new MainWidget();
+        wgt->initUI(demodu->peakNum);
+        connect(demodu, SIGNAL(sendWaveData(CirQueue<float>*,int)), wgt, SLOT(updateData(CirQueue<float>*, int)) );
+        wgt->show();
+    }
+}
+
 void MainWindow::debugDemudu()//debug模式进入demodulation
 {
 
@@ -285,8 +309,8 @@ void MainWindow::debugDemudu()//debug模式进入demodulation
 
     this->Demodu = new Demodulation(hWnd);
     connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
-    Demodu->debugInit(Config::instance());
-
+    Demodu->Init(Config::instance(), DEBUGMODE);
+    connect(Demodu, SIGNAL(sendSpeed(double)), this, SLOT(textbrowserShowSpeed(double)));
     wavFre = Demodu->frequency;
 
     waveWidget = new WaveForm();
@@ -316,14 +340,10 @@ void MainWindow::debugDemudu()//debug模式进入demodulation
                      UDP,SLOT(executeSendData(CirQueue<float>*,char)));
     connect(Demodu, SIGNAL(sendData(int)), this, SLOT(showSendText(int)));
 
-
-    //while(Demodu->openDevice());
-    UdpThread->start();
-
+    //初始化波形显示窗口
+    isShowWindow(Demodu);
     Demodu->start();
-
-    //waveWidget->show();//该界面还未实现
-
+    UdpThread->start();
 
 }
 
@@ -344,12 +364,11 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
     ui->DemoduStop_Button->setEnabled(true);
 
     this->Demodu = new Demodulation(hWnd);
-
+    connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
+    Demodu->Init(Config::instance(), RUNMODE);
     QString info1 = QString("Demodulation Init done!!   Start Demodu !!");
     ui->StateText->append(info1);
-    connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
-    Demodu->Init(Config::instance());
-
+    connect(Demodu, SIGNAL(sendSpeed(float)), this, SLOT(textbrowserShowSpeed(float)));
     wavFre = Demodu->frequency;
 
     waveWidget = new WaveForm();
@@ -380,12 +399,11 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
     connect(Demodu, SIGNAL(sendData(int)), this, SLOT(showSendText(int)));
 
 
-    //while(Demodu->openDevice());
-    UdpThread->start();
-
+    //初始化波形显示窗口
+    //初始化波形显示窗口
+    isShowWindow(Demodu);
     Demodu->start();
-
-    //waveWidget->show();//该界面还未实现
+    UdpThread->start();
 
 
 }
@@ -393,9 +411,17 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
 void MainWindow::on_DemoduStop_Button_clicked()
 {
 
+    if(wgt != NULL)
+    {
+        wgt->close();
+        delete wgt;
+    }
+
     Demodu->stopDemodulation();
     Demodu->wait();
+
     delete Demodu;
+
     Demodu = NULL;
     ui->save_checkBox->setEnabled(false);
     ui->Demodu_Button->setEnabled(true);
@@ -564,3 +590,6 @@ wchar_t* MainWindow::c2w(const char *str)
     MultiByteToWideChar(CP_ACP,0,str,strlen(str),t,length);
     return t;
 }
+
+
+

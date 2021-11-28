@@ -23,17 +23,18 @@ Demodulation::Demodulation(HWND hWnd)
 Demodulation::Demodulation(HWND hWnd,Config *cfig)
 {
     this->m_hWnd = hWnd;
-    Init(cfig);
     sendQueue.setSize(65536000);
     DisplayQueue.setSize(65536000);
 }
 
 Demodulation::~Demodulation()
 {
-
     FreeMemory();
+    if(!Mode)
+    {
     USB->USBClose();
     delete USB;
+    }
     qDebug() << "Demodulation deconstruct success" << endl;
 }
 
@@ -167,7 +168,27 @@ void Demodulation::debugInit(Config *cfig)
 
 }
 
-void Demodulation::Init(Config *cfig)
+void Demodulation::showDemoduImformation(Config *config)
+{
+    QString info2 = QString("采样率： ") + QString::number(frequency)
+            + QString(" peaknum: ") + QString::number(peakNum);
+    emit sendShowQString(info2);
+
+    double norspeed = (double)(frequency * peakNum * 3 * 2 * 8) / 1000000;//Mbps
+
+    QString normalSpeed = QString("Normal Speed is ") + QString::number(norspeed, 'g', 6) + QString("Mbps");
+    emit sendShowQString(normalSpeed);
+
+    QString info3;
+    if(isFilter == false)
+        info3 = QString(" 是否开启滤波： 否 ") + QString("数据存储路径： ") + QString::fromStdString(config->m_DataProcess->m_path );
+    else
+        info3 = QString(" 是否开启滤波： 是 ") + QString("数据存储路径： ") + QString::fromStdString(config->m_DataProcess->m_path );
+
+    emit sendShowQString(info3);
+}
+
+void Demodulation::Init(Config *cfig, int mode)
 {
     if(cfig->m_demodulation->m_CacPhase == std::string("true"))
 
@@ -195,8 +216,16 @@ void Demodulation::Init(Config *cfig)
     else if(cfig->m_demodulation->m_LpFilter == std::string("false"))
         this->isLPFilter = false;
     else{}
+    Mode = mode;
+    if(Mode)
+    {
+        peakNum = cfig->m_Program->m_peaknum;
+    }
+    else
+    {
+        peakNum = cfig->m_demodulation->m_peakNum;
+    }
 
-    peakNum = cfig->m_demodulation->m_peakNum;
     frequency = cfig->m_FPGACard->m_freq;
     demoduStop = false;
     soundSave = false;
@@ -254,34 +283,48 @@ void Demodulation::Init(Config *cfig)
     }
 
     output = new float[peakNum]();
+    waveout = new float[peakNum]();
 
     CH1Data = new unsigned short[peakNum]();
     CH2Data = new unsigned short[peakNum]();
     CH3Data = new unsigned short[peakNum]();
 
+    if(mode)
+    {
+        isUSBOpen = false;
 
-    this->USB = new USBCtrl(cfig);
-    USB->setLenOfChannel(peakNum);
-    //USB->setpackagePerRead(10);
-    long LEN = USB->packagePerRead * USB->m_LenofChannels * 3 * USB->m_bitCount / 8;
-    RECORD_BUF = new BYTE[LEN]();
-
-    qDebug()<<"RECORD_BUF Length = "<<LEN;
+        DebugDemodu = true;
 
 
-    QString info2 = QString("采样率：") + QString::number(frequency)
-            + QString("  peaknum:") + QString::number(peakNum);
-    //emit sendShowQString(info2);
-    QString info3;
-    if(isFilter == false)
-        info3 = QString(" 是否开启滤波：否 ") + QString(" 数据存储路径：") + QString::fromStdString(cfig->m_DataProcess->m_path );
+
+        QString info = QString("Demodulation debugInit done!!");
+        emit sendShowQString(info);
+
+
+        QString info1 = QString("Start DebugDemodu");
+        emit sendShowQString(info1);
+    }
     else
-        info3 = QString(" 是否开启滤波：是 ") + QString(" 数据存储路径：") + QString::fromStdString(cfig->m_DataProcess->m_path );
-    info3 = info2 + info3;
-    emit sendShowQString(info3);
+    {
+        this->USB = new USBCtrl(cfig);
+        USB->setLenOfChannel(peakNum);
+        //USB->setpackagePerRead(10);
+        long LEN = USB->packagePerRead * USB->m_LenofChannels * 3 * USB->m_bitCount / 8;
+        RECORD_BUF = new BYTE[LEN]();
 
-    DebugDemodu = false;
-    isUSBOpen = false;
+        qDebug()<<"RECORD_BUF Length = "<<LEN;
+        DebugDemodu = false;
+        isUSBOpen = false;
+
+    }
+    showDemoduImformation(cfig);
+    DemoduNum = 0;
+//初始化时钟，用于定时发送解调数据给mainwidget显示,和显示的刷新频率匹配。
+    timer2 = new QTimer();
+    timer2->setInterval(1000);//1s定时
+    timer2->start();
+
+    connect(timer2, SIGNAL(timeout()), this, SLOT(timerSlot2()));
 }
 
 
@@ -457,38 +500,38 @@ void Demodulation::demoduPhase()
                     Hpfilter(i);
                     float res = RealPhOut[i][2];
 
-                    if(isLPFilter){
+                    if(isLPFilter)
+                    {
                         FilterReg[i][0]=LPFilterCoeff[0]*(res-LPFilterCoeff[1]*FilterReg[i][1]-LPFilterCoeff[2]*FilterReg[i][2]-LPFilterCoeff[3]*FilterReg[i][3]-LPFilterCoeff[4]*FilterReg[i][4]);
                         output[i] = LPFilterCoeff[5]*FilterReg[i][0]+LPFilterCoeff[6]*FilterReg[i][1]+LPFilterCoeff[7]*FilterReg[i][2]+LPFilterCoeff[8]*FilterReg[i][3]+LPFilterCoeff[9]*FilterReg[i][4];
-                        for(int n=4;n>=1;n--){
+                        for(int n=4;n>=1;n--)
+                        {
                             FilterReg[i][n]=FilterReg[i][n-1];
-                            }
+                        }
                     }
-                    else{
+                    else
+                    {
                          output[i] = res;
                     }
-                    if(flag == 1){
-                    vSound.push_back(output[i]);
-                    sendQueue.push(output[i]);
-                    }
-                    else{
-                    sendQueue.push(output[i]);
-                    }
 
+                    if(flag == 1)
+                    {
+                        vSound.push_back(output[i]);
+                    }
                 }
                 else
                 {
                     output[i] = RealPh[i];
-                    sendQueue.push(output[i]);
-
                 }
             }
             else
             {
                 output[i] = Ph[i];
-
-                sendQueue.push(output[i]);
             }
+
+            sendQueue.push(output[i]);
+            DisplayQueue.push(output[i]);
+            waveout[i] = output[i];
         }
 
 }
@@ -549,25 +592,31 @@ void Demodulation::debugdemoduPhase(int vectornum)
                     Hpfilter(i);
                     float res = RealPhOut[i][2];
 
-                    if(isLPFilter){
+                    if(isLPFilter)
+                    {
                         FilterReg[i][0]=LPFilterCoeff[0]*(res-LPFilterCoeff[1]*FilterReg[i][1]-LPFilterCoeff[2]*FilterReg[i][2]-LPFilterCoeff[3]*FilterReg[i][3]-LPFilterCoeff[4]*FilterReg[i][4]);
                         output[i] = LPFilterCoeff[5]*FilterReg[i][0]+LPFilterCoeff[6]*FilterReg[i][1]+LPFilterCoeff[7]*FilterReg[i][2]+LPFilterCoeff[8]*FilterReg[i][3]+LPFilterCoeff[9]*FilterReg[i][4];
-                        for(int n=4;n>=1;n--){
+                        for(int n=4;n>=1;n--)
+                        {
                             FilterReg[i][n]=FilterReg[i][n-1];
-                            }
+                        }
                         //qDebug() << "output = " << output[i];
                     }
-                    else{
+                    else
+                    {
                          output[i] = res;
                     }
 
 
-                    if(flag == 1){
-                    vSound.push_back(output[i]);
-                    sendQueue.push(output[i]);
+                    if(flag == 1)
+                    {
+
+                        vSound.push_back(output[i]);
+                        sendQueue.push(output[i]);
                     }
-                    else{
-                    sendQueue.push(output[i]);
+                    else
+                    {
+                        sendQueue.push(output[i]);
                     }
 
                 }
@@ -581,9 +630,10 @@ void Demodulation::debugdemoduPhase(int vectornum)
             else
             {
                 output[i] = Ph[i];
-
                 sendQueue.push(output[i]);
             }
+            DisplayQueue.push(output[i]);
+            waveout[i] = output[i];
         }
 
 }
@@ -607,29 +657,21 @@ vector<float> Demodulation::debugReadData(QString filename, bool &filend, int &s
         ifstream inbin(stdpath.data(), std::ifstream::binary);
         inbin.seekg(startpos);// 定位到文件中startpos所在位置开始读取
 
-        for(int i = 0; i < 10 * peakNum; i++)
-        {
-            if( inbin.eof() )//读取到文件末尾
-            {
-                filend = true;
-                startpos = 0;
-                break;
-            }
-            else
-            {
+        for(int i = 0; i < 300 * peakNum; i++)
+        {          
                 float orginData;
                 inbin.read((char*)(&orginData), sizeof(float));
+                
+                if( inbin.eof() )//读取到文件末尾
+                {
+                    filend = true;
+                    startpos = 0;
+                    break;
+                }
                 orginVec.push_back(orginData);
-            }
+            
         }
-        startpos = inbin.tellg();//获取当前已经读取的文件位置
-        //qDebug() << "startpos = " << startpos;
-        if(inbin.eof())
-        {
-            filend = true;
-            startpos = 0;
-        }
-
+        if(!filend) startpos = inbin.tellg();//获取当前已经读取的文件位置
         else
             filend = false;
 
@@ -653,7 +695,6 @@ void Demodulation::debugRunDemodu()
     int t1=0,t2=0;
     int term = 0;
     int hasRecv=0;
-    is_demoduRun = true;
 
    QString CH1filename = QString("[CH1][30]20211008163701.bin");
     bool CH1filend = false;
@@ -666,22 +707,25 @@ void Demodulation::debugRunDemodu()
     QString CH3filename = QString("[CH3][30]20211008163701.bin");
     bool CH3filend = false;
     int CH3startpos = 0;
+    is_demoduRun = true;
 
     while(true)
     {
 
-        if (!is_demoduRun) break;
+        if (!is_demoduRun) return;
 
-        hasRecv = 10;
+        hasRecv = 300;
         //qDebug()<<"hasRecv"<<hasRecv<<endl;
         CHdatalen+=hasRecv;
         if(CHdatalen>=10000000){
             CHdatalen=0;
         }
 
+
         if (hasRecv > 0)
         {
-
+            int t3 = 0;
+            t3 = int(clock());
              debugCH1Data = debugReadData(CH1filename, CH1filend, CH1startpos);
              debugCH2Data = debugReadData(CH2filename, CH2filend, CH2startpos);
              debugCH3Data = debugReadData(CH3filename, CH3filend, CH3startpos);
@@ -693,6 +737,8 @@ void Demodulation::debugRunDemodu()
                  CH1startpos = CH2startpos = CH3startpos = 0;
                  CH1filend = CH2filend = CH1filend = false;
              }
+            while( (int(clock()) - t3) < 10 );
+
 
              for (int j = 0; j < hasRecv; j++)
              {
@@ -723,14 +769,19 @@ void Demodulation::debugRunDemodu()
                         }
                     }
                     term++;
+                    DemoduNum++;
 
                     if(term == SENDSIZE)
                     {
-                        qDebug()<<"SEND";
+                        //qDebug()<<"SEND";
                         //emit sendData(SENDSIZE);
+                        //qDebug() << "sendWaveData len = " << DisplayQueue.size() << endl;
+                        emit sendWaveData(&DisplayQueue, peakNum);
                         emit sendDataBegin(&sendQueue,demoduType);
                         term = 0;
                     }
+
+
 
             }
              debugCH1Data.clear();
@@ -748,6 +799,39 @@ void Demodulation::debugRunDemodu()
 }
 
 
+void Demodulation::timerSlot2()
+{
+    if(sender() == timer2)
+    {
+        double Speed = (double)(DemoduNum * peakNum * 3 * 2 * 8) / 1000000;//Mbps
+        DemoduNum = 0;
+        emit sendSpeed(Speed);
+        //qDebug() << Speed << "Mbps" << endl;
+    }
+}
+
+void Demodulation::getCHdata(int &i, int &j, int &num)
+{
+    for (i = j * peakNum * USB->m_ChannelCount * 2;
+         i < peakNum * 2 + j * USB->m_ChannelCount * peakNum * 2;
+         i += 2)
+    {
+         num = (i - j * USB->m_ChannelCount * peakNum * 2) / 2;
+
+         CH1Data[num] = RECORD_BUF[i + 1];
+         CH1Data[num] = (CH1Data[num] << 8) + (RECORD_BUF[i]);
+
+
+         CH2Data[num] = RECORD_BUF[i + peakNum * 2 + 1];
+         CH2Data[num] = (CH2Data[num] << 8) + (RECORD_BUF[i + peakNum * 2]);
+
+
+         CH3Data[num] = RECORD_BUF[i + peakNum * 4 + 1];
+         CH3Data[num] = (CH3Data[num] << 8) + (RECORD_BUF[i + peakNum * 4]);
+
+     }
+}
+
 void Demodulation::run()
 {
     qDebug() << "DebugDemodu = " << DebugDemodu;
@@ -758,14 +842,18 @@ void Demodulation::run()
     else
     {
         qDebug()<<"Demodulation Current Thread : "<<QThread::currentThread();
+        QString info = QString("RunDemodu start");
+        emit sendShowQString(info);
+
+
         int usb = USB->USBStart();
         USB->USBClose();
         usb = USB->USBStart();
         qDebug()<<"USB Return = "<< usb;
-        int t1=0,t2=0;
         int term = 0;
+        //int wavenum = 0;
         int hasRecv=0;
-        is_demoduRun = true;
+
 
         while(true)
         {
@@ -776,71 +864,40 @@ void Demodulation::run()
             }
 
             hasRecv = USB->getDataFromUSB(RECORD_BUF);
-            //qDebug()<<"hasRecv"<<hasRecv<<endl;
-            CHdatalen+=hasRecv;
-            if(CHdatalen>=10000000){
-                CHdatalen=0;
-            }
+
             if (hasRecv > 0)
             {
                  int num = 0;
                  int i = 0;
                  for (int j = 0; j < hasRecv; j++)
                  {
+                    getCHdata(i, j, num);
+                    DemoduNum++;
+                    if(calcPhase)
+                    {
+                        this->demoduPhase();
 
-                      for (i = j * USB->m_LenofChannels * USB->m_ChannelCount * 2;
-                           i < USB->m_LenofChannels * 2 + j * USB->m_ChannelCount * USB->m_LenofChannels * 2;
-                           i += 2)
-                      {
-                           num = (i - j * USB->m_ChannelCount * USB->m_LenofChannels * 2) / 2;
-
-                           CH1Data[num] = RECORD_BUF[i + 1];
-                           CH1Data[num] = (CH1Data[num] << 8) + (RECORD_BUF[i]);
-
-
-                           CH2Data[num] = RECORD_BUF[i + USB->m_LenofChannels * 2 + 1];
-                           CH2Data[num] = (CH2Data[num] << 8) + (RECORD_BUF[i + USB->m_LenofChannels * 2]);
-
-
-                           CH3Data[num] = RECORD_BUF[i + USB->m_LenofChannels * 4 + 1];
-                           CH3Data[num] = (CH3Data[num] << 8) + (RECORD_BUF[i + USB->m_LenofChannels * 4]);
-
-                       }
-                      t2=int(clock())-t1;
-
-                      if(t2>=10000)
-                      {
-
-                          qDebug()<<"CHdatalen"<<CHdatalen;
-                          qDebug()<<"t1:"<<t1<<"t2:"<<t2;
-                          //fwrite(CH1DataBuff[0],sizeof(unsigned short),CHdatalen[0],pFile[0]);
-                          t1=int(clock());
-                      }
-
-
-                        if(calcPhase)
+                    }
+                    else
+                    {
+                        for(int nn = 0; nn < peakNum ; nn++)
                         {
-                            this->demoduPhase();
+                            sendQueue.push(CH1Data[nn]);
+                            sendQueue.push(CH2Data[nn]);
+                            sendQueue.push(CH3Data[nn]);
+                        }
+                    }
+                    term++;
 
-                        }
-                        else
-                        {
-                            for(int nn = 0; nn < peakNum ; nn++)
-                            {
-                                sendQueue.push(CH1Data[nn]);
-                                sendQueue.push(CH2Data[nn]);
-                                sendQueue.push(CH3Data[nn]);
-                            }
-                        }
-                        term++;
+                    if(term >= SENDSIZE)
+                    {
+                        //qDebug() << "sendQueue len = " << sendQueue.size() << endl;
+                        emit sendWaveData(&DisplayQueue, peakNum);
 
-                        if(term == SENDSIZE)
-                        {
-                            qDebug()<<"SEND";
-                           // emit sendData(SENDSIZE);
-                            emit sendDataBegin(&sendQueue,demoduType);
-                            term = 0;
-                        }
+                        emit sendDataBegin(&sendQueue,demoduType);
+
+                        term = 0;
+                    }
 
                 }
 
@@ -856,7 +913,7 @@ void Demodulation::run()
 
 }
 
-void Demodulation::ReadFilterCoeff(float *coeff,float *LPFcoeff, string hpcutoff, string lpcutoff)
+void Demodulation::ReadFilterCoeff(float *coeff,float *LPFcoeff, string hpcutoff, string lpcutoff)//读取文件需要重写用ifstrem
 {
     QString fileName = QString::fromLocal8Bit(hpcutoff.data());
     QString fileName2 = QString::fromLocal8Bit(lpcutoff.data());
@@ -898,14 +955,16 @@ void Demodulation::ReadFilterCoeff(float *coeff,float *LPFcoeff, string hpcutoff
     for(int i = 0 ; i < FILTERODR; i++)
         qDebug() << "coeff[" << i << "] = " << coeff[i] << endl;
 
-//    for(int i = 0 ; i < LPFILTERODR; i++)
-//        qDebug() << "LPFcoeff[" << i << "] = " << LPFcoeff[i] << endl;
+    for(int i = 0 ; i < LPFILTERODR; i++)
+        qDebug() << "LPFcoeff[" << i << "] = " << LPFcoeff[i] << endl;
 
     }
     fclose(pFile);
     fclose(pFile2);
 }
-//该函数有bug
+
+
+/******************该函数有bug******************/
 void Demodulation::FilterCoeffCalculate(float *coeff){//fre=5,res=1.5,FilterOrder=5,calculate buttorworthFilte coeff
     float res=1.5;
     float c=tan(M_PI*fre/frequency);
@@ -918,41 +977,53 @@ void Demodulation::FilterCoeffCalculate(float *coeff){//fre=5,res=1.5,FilterOrde
 
 void Demodulation::FreeMemory()
 {
+
+    timer2->stop();
+
+    delete timer2;
+
     delete[] RECORD_BUF;
+
     delete[] output;
+    delete[] waveout;
     delete[] CH1Data;
     delete[] CH2Data;
     delete[] CH3Data;
-
+    //sendQueue.clear();
+    //DisplayQueue.clear();
     if(calcPhase)
     {
         delete[] Vi;
         delete[] Vq;
         delete[] Ph;
-    }
-    if(isFilter)
-    {
-        delete[] FilterCoeff;
-        delete[] LPFilterCoeff;
-        delete[] FirstRealPh;
-        delete[] FirstIn_n;
-        delete[] RealPhReg;
-        delete[] RealPhOut;
-        delete[] FilterReg;
-        delete[] cnt;
         delete[] atanTable;
-    }
-    if(Unwraping){
+        if(Unwraping)
+        {
 
-        delete[] RealPh;
-        delete[] PriorPh;
-        delete[] K;
-        delete[] PriorK;
+            delete[] RealPh;
+            delete[] PriorPh;
+            delete[] K;
+            delete[] PriorK;
+
+            if(isFilter)
+            {
+                delete[] FilterCoeff;
+                delete[] xlast;
+                delete[] mlast;
+                delete[] mlast2;
+                delete[] mlast3;
+                delete[] LPFilterCoeff;
+                delete[] FirstRealPh;
+                delete[] FirstIn_n;
+                delete[] RealPhReg;
+                delete[] RealPhOut;
+                delete[] FilterReg;
+                delete[] cnt;
+
+            }
+        }
     }
-//    if(UnwrapFilter)
-//    {
-//        delete[] unwrapFilReg;
-//    }
+
 
 }
 

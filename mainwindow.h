@@ -5,17 +5,18 @@
 #include "wzserialport.h"
 #include "PeakSearch.h"
 #include "plot.h"
-#include "demodulation.h"
 #include <QDateTime>
 #include <QTimer>
 #include <QTime>
-#include "udpconnect.h"
-#include "CirQueue.h"
-#include "waveform.h"
 #include <QMetaType>
 #include <QSound>
 #include <QString>
 #include "WavHead.h"
+#include "demodulation.h"
+#include "udpconnect.h"
+#include "CirQueue.h"
+#include "waveform.h"
+#include "mainwidget.h"
 
 namespace Ui {
 class MainWindow;
@@ -36,10 +37,6 @@ public:
     QSound *sound = NULL;
     QString wavPath[10];
     int wavFre;
-
-
-
-public slots:
 
 
 private slots:
@@ -72,6 +69,10 @@ private slots:
 
     void showText(QString text);
 
+    void textbrowserShowSpeed(double );
+
+
+
 private:
     Ui::MainWindow *ui;
     HWND hWnd;
@@ -79,6 +80,7 @@ private:
     PeakSearch *peak;
 
     Plot *plt = NULL;
+    MainWidget *wgt = NULL;
 
     Demodulation *Demodu = NULL;
     Demodulation *Demodu_2=NULL;
@@ -98,8 +100,12 @@ private:
     bool MinWignoreDevice = false;
 
     unsigned short saveCounter = 0;
+    bool CaculationPhase;
 
     void debugDemudu();
+
+    void isShowWindow(Demodulation*);
+
 
 signals:
     void sendPeakPosDone();

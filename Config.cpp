@@ -232,6 +232,8 @@ void Config::Init(string path) {
 	m_DataProcess = new ConfigDataProcess(savepath,isSave,wavelen,ValueMax,ValueMin,send);
 
     qDebug() << wavelen << endl;
+    bool debugmode = get_word_bool(m_configStr, "DebugMode");
+    m_Program = new ConfigProgram(debugmode, 0);//先初始化m_Program.m_peaknum为不存在值
 
 }
 
@@ -243,14 +245,14 @@ void Config::InitDebug(string debugpath)
     deleteSpace(m_debugstr);
     deleteComment(m_debugstr);
 
-    bool debugmode = get_word_bool(m_configStr, "DebugMode");
+    bool debugmode = true;
     int m_peaknum = get_word_int(m_debugstr, "peaknum");
     if(debugmode)
     {
     qDebug() << "m_debugpeaknum = " << m_peaknum;
     m_demodulation->setPeakNum(m_peaknum);
     }
-    m_Program = new ConfigProgram(debugmode, m_peaknum);
+    m_Program = new ConfigProgram(debugmode, m_peaknum);//如果是debugmode再覆盖初始化
 }
 
 

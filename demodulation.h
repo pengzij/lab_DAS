@@ -45,7 +45,7 @@ public:
 
     void demoduPhase();
 
-    void Init(Config *cfig);
+    void Init(Config *cfig, int mode);
 
     void debugInit(Config *cfig);
 
@@ -82,6 +82,8 @@ signals:
     void sendData(int sendsize);
     void sendDataBegin(CirQueue<float> *que, char Type);
     void sendShowQString(QString str);
+    void sendWaveData(CirQueue<float> *out, int peaknum);
+    void sendSpeed(double);
 
 
 
@@ -106,13 +108,21 @@ private:
 
     HWND m_hWnd;
 
+    QTimer *timer2;
+
+    int DemoduNum;
+
+    void getCHdata(int &i, int &j, int &num);
+
+    inline void showDemoduImformation(Config *);
+
 public:
 
 
 
     int peakNum;
     int CHdatalen=0;
-
+    int Mode;
     unsigned short* CH1Data;
     unsigned short* CH2Data;
     unsigned short* CH3Data;
@@ -141,8 +151,9 @@ public:
     float (*RealPhReg)[FILTERODR];
     float (*RealPhOut)[FILTERODR];
     float (*FilterReg)[LPFILTERODR];
-    //float (*unwrapFilReg)[3];
+
     float *output;
+    float *waveout;
     float *atanTable;
     float *FilterCoeff;
     float *LPFilterCoeff;
@@ -155,6 +166,7 @@ public:
     CirQueue<float> sendQueue;
     CirQueue<float> DisplayQueue;
 
+
     int flag=0;
 
     char demoduType;
@@ -163,6 +175,9 @@ public:
     bool soundSave;
 
     vector<float> vSound;
+
+private slots:
+    void timerSlot2();
 
 };
 

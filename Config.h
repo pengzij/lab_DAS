@@ -59,6 +59,11 @@ public:
         Port = port;
     }
 
+    bool getCacPhase() const
+    {
+        return m_CacPhase == "true" ? true: false;
+    }
+
 public:
     string m_CacPhase;
     string m_Filt;

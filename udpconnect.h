@@ -55,7 +55,7 @@ public:
     void initSeriesParam(QLineSeries *line1, QLineSeries *line2, QLineSeries *line3);
 
     void saveData2Bin(float* data);
-public:
+
     QLineSeries *m_lineSeries_1;
     QLineSeries *m_lineSeries_2;
     QLineSeries *m_lineSeries_3;
@@ -70,8 +70,6 @@ public:
 
     QVector<QPointF> points;
 
-
-public:
     char Head[8] = {(char)0xF1,(char)0xF2,(char)0xF3,(char)0xF4};
 
     long hasSend;
@@ -95,6 +93,8 @@ public:
     QDateTime systemDate;
 
     bool is_saveData = false;
+
+
 
 private:
     QMutex writeLock;

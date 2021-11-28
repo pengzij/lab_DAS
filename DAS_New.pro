@@ -30,7 +30,10 @@ SOURCES += main.cpp\
     udpconnect.cpp \
     plot.cpp \
     waveform.cpp \
-    waveplot.cpp
+    waveplot.cpp \
+    callout.cpp \
+    chartview.cpp \
+    mainwidget.cpp
 
 HEADERS  += mainwindow.h \
     wzserialport.h \
@@ -46,12 +49,16 @@ HEADERS  += mainwindow.h \
     CirQueue.h \
     waveplot.h \
     CirQueue1.h \
-    wavhead.h
+    wavhead.h \
+    callout.h \
+    chartview.h \
+    mainwidget.h
 
 FORMS    += mainwindow.ui \
     plot.ui \
     waveform.ui \
-    waveplot.ui
+    waveplot.ui \
+    mainwidget.ui
 
 #openmp
 QMAKE_CXXFLAGS+= -openmp

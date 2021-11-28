@@ -21,8 +21,8 @@ public:
 	T pop();
 	T head();
 	T last();
+    void clear();
 
-	void resize(unsigned long size);
 	unsigned long size();
 	unsigned long length();
 private:
@@ -133,19 +133,9 @@ unsigned long CirQueue<T>::length()
 	return (m_rear - m_front + M_SIZE) % M_SIZE;
 }
 
+
 template<typename T>
-void CirQueue<T>::resize(unsigned long size)
+void CirQueue<T>::clear()
 {
-	T* temp = new T[size]();
-	memset(temp, 0, sizeof(T) * size);
-	unsigned long count = 0;
-	for (size_t i = m_front; i < m_rear; i = (i + 1) % M_SIZE)
-	{
-		temp[count++] = m_data[i];
-	}
-	m_front = 0;
-	m_rear = count;
-	M_SIZE = size;
-	delete[] m_data;
-	m_data = temp;
+    delete[] m_data;
 }
