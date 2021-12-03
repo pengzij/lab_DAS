@@ -288,7 +288,8 @@ void MainWindow::isShowWindow(Demodulation *demodu)
     if(CaculationPhase)
     {
         //初始化波形显示窗口
-        wgt = new MainWidget();
+
+        wgt = new MainWidget(demodu->frequency / 1000);
         wgt->initUI(demodu->peakNum);
         connect(demodu, SIGNAL(sendWaveData(CirQueue<float>*,int)), wgt, SLOT(updateData(CirQueue<float>*, int)) );
         wgt->show();
@@ -306,7 +307,6 @@ void MainWindow::debugDemudu()//debug模式进入demodulation
     ui->StateText->append(info);
     ui->Demodu_Button->setEnabled(false);
     ui->DemoduStop_Button->setEnabled(true);
-
     this->Demodu = new Demodulation(hWnd);
     connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
     Demodu->Init(Config::instance(), DEBUGMODE);
@@ -368,7 +368,7 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
     Demodu->Init(Config::instance(), RUNMODE);
     QString info1 = QString("Demodulation Init done!!   Start Demodu !!");
     ui->StateText->append(info1);
-    connect(Demodu, SIGNAL(sendSpeed(float)), this, SLOT(textbrowserShowSpeed(float)));
+    connect(Demodu, SIGNAL(sendSpeed(double)), this, SLOT(textbrowserShowSpeed(double)));
     wavFre = Demodu->frequency;
 
     waveWidget = new WaveForm();

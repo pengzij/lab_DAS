@@ -27,6 +27,7 @@ Demodulation::Demodulation(HWND hWnd,Config *cfig)
     DisplayQueue.setSize(65536000);
 }
 
+
 Demodulation::~Demodulation()
 {
     FreeMemory();
@@ -830,6 +831,7 @@ void Demodulation::getCHdata(int &i, int &j, int &num)
          CH3Data[num] = (CH3Data[num] << 8) + (RECORD_BUF[i + peakNum * 4]);
 
      }
+    //qDebug() << "num = " <<  num << endl;
 }
 
 void Demodulation::run()
@@ -853,7 +855,7 @@ void Demodulation::run()
         int term = 0;
         //int wavenum = 0;
         int hasRecv=0;
-
+        is_demoduRun = true;
 
         while(true)
         {
@@ -965,15 +967,15 @@ void Demodulation::ReadFilterCoeff(float *coeff,float *LPFcoeff, string hpcutoff
 
 
 /******************该函数有bug******************/
-void Demodulation::FilterCoeffCalculate(float *coeff){//fre=5,res=1.5,FilterOrder=5,calculate buttorworthFilte coeff
-    float res=1.5;
-    float c=tan(M_PI*fre/frequency);
-    coeff[0]=1/(1+res*c+pow(c,2));
-    coeff[1]=(-2)*coeff[0];
-    coeff[2]=coeff[0];
-    coeff[3]=2*(pow(c,2)-1)*coeff[0];
-    coeff[4]=(1-res*c+pow(c,2))*coeff[0];
-}
+//void Demodulation::FilterCoeffCalculate(float *coeff){//fre=5,res=1.5,FilterOrder=5,calculate buttorworthFilte coeff
+//    float res=1.5;
+//    float c=tan(M_PI*fre/frequency);
+//    coeff[0]=1/(1+res*c+pow(c,2));
+//    coeff[1]=(-2)*coeff[0];
+//    coeff[2]=coeff[0];
+//    coeff[3]=2*(pow(c,2)-1)*coeff[0];
+//    coeff[4]=(1-res*c+pow(c,2))*coeff[0];
+//}
 
 void Demodulation::FreeMemory()
 {

@@ -104,7 +104,7 @@ private:
 
     void debugDemudu();
 
-    void isShowWindow(Demodulation*);
+    inline void isShowWindow(Demodulation*);
 
 
 signals:

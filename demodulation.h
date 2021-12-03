@@ -18,6 +18,7 @@
 #include <QThreadPool>
 #include <QTime>
 #include <fstream>
+#include <memory>
 #include "PeakSearch.h"
 
 
@@ -28,7 +29,7 @@
 #define SENDSIZE 9000
 #define NUMTABLE 201
 
-#define fre 5
+//#define fre 5
 #define FilterOrder 5
 
 using namespace  std ;
@@ -41,6 +42,7 @@ public:
     Demodulation(HWND hWnd);
 
     Demodulation(HWND hWnd,Config *cfig);
+
     ~Demodulation();
 
     void demoduPhase();
@@ -78,6 +80,7 @@ public:
     void debugdemoduPhase(int vectornum);
 
 
+
 signals:
     void sendData(int sendsize);
     void sendDataBegin(CirQueue<float> *que, char Type);
@@ -112,13 +115,11 @@ private:
 
     int DemoduNum;
 
-    void getCHdata(int &i, int &j, int &num);
+    inline void getCHdata(int &i, int &j, int &num);
 
     inline void showDemoduImformation(Config *);
 
 public:
-
-
 
     int peakNum;
     int CHdatalen=0;

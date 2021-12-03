@@ -1,5 +1,6 @@
 #include "mainwidget.h"
 #include "ui_mainwidget.h"
+#include "demodulation.h"
 
 #include <QDebug>
 #include <QSerialPort>
@@ -9,23 +10,22 @@
 #include <sys/time.h>
 
 
-#define TIMEINTERVAL 25//定时器时间间隔 刷新频率50Hz
-#define FRE 30//频率，因为是毫秒单位，30KHz
-#define LEN_PER FRE * TIMEINTERVAL//单次刷新显示数目
-#define WINDOW_MAX_X 10000 //窗口x轴范围
-#define SHOWDATA_MAX WINDOW_MAX_X * 10//历史数据最大长度
-#define XSACLE 10//x轴时间刻度
-#define SENDSIZE 9000
+
+
 
 static int ii = 0;
 
-MainWidget::MainWidget(QWidget *parent) :
+MainWidget::MainWidget(int fre, int tmInterval, int window_max_x, int xScale, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::MainWidget),
     chart(new QChart),
-    tip(0),
     timer(new QTimer),
     timer2(new QTimer),
+    TIMEINTERVAL(tmInterval),//定时器时间间隔
+    FRE(fre),//频率
+    WINDOW_MAX_X(window_max_x),//窗口x轴范围
+    XSACLE(xScale),//x轴时间刻度
+    tip(0),
     count(0),
     isStopping(false),
     isStop(false),
@@ -34,7 +34,6 @@ MainWidget::MainWidget(QWidget *parent) :
     cur_x(0),
     last_queue_size(0),
     cur_queue_size(0),
-    cur_len_per(LEN_PER),
     isUpdataing(false),
     clearWave(true),
     lastShowpeakNum(-1)//初始化为不可能的数据
@@ -42,6 +41,9 @@ MainWidget::MainWidget(QWidget *parent) :
     ui->setupUi(this);
     timer->setInterval(1000);//1s定时
     timer2->setInterval(TIMEINTERVAL);
+    LEN_PER = FRE * TIMEINTERVAL * 1.34;
+    SHOWDATA_MAX = WINDOW_MAX_X * 10;
+    cur_len_per = LEN_PER;
 }
 
 MainWidget::~MainWidget()
@@ -56,7 +58,6 @@ MainWidget::~MainWidget()
     delete timer2;
     delete chartView;
     delete ui;
-    qDebug() << "61" << endl;
 }
 
 void MainWidget::getpeakNum(int peaknum)
@@ -183,86 +184,77 @@ void MainWidget::sendData(CirQueue<float> *que)
 
 
 
-void MainWidget::windowave()
-{
-    if(showDataList.size() > 0)//每1ms 判断是否需要更新曲线
-    {
+//void MainWidget::windowave()
+//{
+//    if(showDataList.size() > 0)//每1ms 判断是否需要更新曲线
+//    {
 
-        QList<QPointF> a;
-        for(int i =0 ; i < 10; i++)
-       {
-            a.append(QPointF(i + ii, 1));
-        }
-        ii += 10;
-        series->replace(a);
-        *series << a;
-        showDataList.clear();
+//        QList<QPointF> a;
+//        for(int i =0 ; i < 10; i++)
+//       {
+//            a.append(QPointF(i + ii, 1));
+//        }
+//        ii += 10;
+//        series->replace(a);
+//        *series << a;
+//        showDataList.clear();
 
-    }
+//    }
 
-    switch(wavecase)
-    {
-    case 0://窗口重置
-        showDataList.clear();
-        showData.clear();
-        series->clear();
-        chart->axisX()->setRange(0, WINDOW_MAX_X);//1s的数据显示范围
-        cur_show_x = 0;
-        wavecase = 1;
-        break;
+//    switch(wavecase)
+//    {
+//    case 0://窗口重置
+//        showDataList.clear();
+//        showData.clear();
+//        series->clear();
+//        chart->axisX()->setRange(0, WINDOW_MAX_X);//1s的数据显示范围
+//        cur_show_x = 0;
+//        wavecase = 1;
+//        break;
 
-    case 1://开始绘制曲线
-        cur_show_x = series->count();//获取当前曲线长度
-        if(cur_show_x >= WINDOW_MAX_X)
-        {
-            cur_show_x = WINDOW_MAX_X;//如果曲线长度已经超过显示窗口范围
-            wavecase = 2;
-            break;
-        }
-        wavecase = 1;
-        break;
+//    case 1://开始绘制曲线
+//        cur_show_x = series->count();//获取当前曲线长度
+//        if(cur_show_x >= WINDOW_MAX_X)
+//        {
+//            cur_show_x = WINDOW_MAX_X;//如果曲线长度已经超过显示窗口范围
+//            wavecase = 2;
+//            break;
+//        }
+//        wavecase = 1;
+//        break;
 
-    case 2:
-        cur_show_x += LEN_PER;
-        if(series->count() >= cur_show_x)
-            chart->axisX()->setRange(cur_show_x - WINDOW_MAX_X, cur_show_x);//每毫秒显示区域右移LEN_PER_MSEC
-        else
-        {
-            cur_show_x -= LEN_PER;//如果数据到头了，还原等待新的数据到达
-        }
+//    case 2:
+//        cur_show_x += LEN_PER;
+//        if(series->count() >= cur_show_x)
+//            chart->axisX()->setRange(cur_show_x - WINDOW_MAX_X, cur_show_x);//每毫秒显示区域右移LEN_PER_MSEC
+//        else
+//        {
+//            cur_show_x -= LEN_PER;//如果数据到头了，还原等待新的数据到达
+//        }
 
-        if(series->count() >= SHOWDATA_MAX * 3 / 2)//历史数据最大值的3 / 2
-        {
-            series->removePoints(0, SHOWDATA_MAX / 2);
+//        if(series->count() >= SHOWDATA_MAX * 3 / 2)//历史数据最大值的3 / 2
+//        {
+//            series->removePoints(0, SHOWDATA_MAX / 2);
 
-        }
+//        }
 
 
 
-    default:
-        wavecase = 0;
-        break;
-    }
-    if(lastShowpeakNum != ui->comboBox->currentIndex())//改变了显示的区域,重置显示
-    {
-        lastShowpeakNum = ui->comboBox->currentIndex();//更新
-        wavecase = 0;
-    }
-}
+//    default:
+//        wavecase = 0;
+//        break;
+//    }
+//    if(lastShowpeakNum != ui->comboBox->currentIndex())//改变了显示的区域,重置显示
+//    {
+//        lastShowpeakNum = ui->comboBox->currentIndex();//更新
+//        wavecase = 0;
+//    }
+//}
 
 void MainWidget::flashwave()
 {
     qDebug() << "cur_queue_size = " << cur_queue_size;
-    /*根据发送数据的速度更新显示速度, 为避免显示速度过快，设置增加步进小于减少步进*/
-//    if(cur_queue_size > SENDSIZE )
-//        cur_len_per += LEN_PER / 30;
-//    else
-//    {
-//        cur_len_per -= LEN_PER / 30;
-//        if(cur_len_per <= 0)
-//            cur_len_per = 0;
-//    }
-    cur_len_per = SENDSIZE / 9;
+    //cur_len_per = SENDSIZE / 9;
     qDebug() << "cur_len_per = " << cur_len_per;
     /*判断queue中数据长度满足一次刷新*/
     if(waveQueue.size() >= cur_len_per)
