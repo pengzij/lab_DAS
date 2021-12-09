@@ -41,7 +41,7 @@ MainWidget::MainWidget(int fre, int tmInterval, int window_max_x, int xScale, QW
     ui->setupUi(this);
     timer->setInterval(1000);//1s定时
     timer2->setInterval(TIMEINTERVAL);
-    LEN_PER = FRE * TIMEINTERVAL * 1.34;//定时器的实际定时时间是设置的大约4/3倍，因此向上取1.34倍,目前测试30kHz和10kHz采样率下，显示队列不存在溢出
+    LEN_PER = FRE * TIMEINTERVAL * 1.34;
     SHOWDATA_MAX = WINDOW_MAX_X * 10;
     cur_len_per = LEN_PER;
 }
