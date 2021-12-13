@@ -165,3 +165,7 @@ debug.txt 中配置debug模式下peaknum的值，需要和本地读取通道数�
 
 [![on8BcR.png](https://z3.ax1x.com/2021/11/28/on8BcR.png)](https://imgtu.com/i/on8BcR)
 * 存在问题，目前程序根据30kHz实现显示，还未测试不同采样率的情况显示是否异常（主要是当采样率低于30kHz）
+
+## 2021.12.13 v0.4.1 实现不同采样率显示
+* 实现不同采样率显示，已经测试10kHz和30kHz。
+* 后续需要将数据写入函数由fwrite改成通过字节流写入。
