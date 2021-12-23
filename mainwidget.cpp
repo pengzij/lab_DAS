@@ -15,7 +15,7 @@
 
 static int ii = 0;
 
-MainWidget::MainWidget(int fre, int tmInterval, int window_max_x, int xScale, QWidget *parent) :
+MainWidget::MainWidget(int sendsize, int fre, int tmInterval, int window_max_x, int xScale, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::MainWidget),
     chart(new QChart),
@@ -36,6 +36,7 @@ MainWidget::MainWidget(int fre, int tmInterval, int window_max_x, int xScale, QW
     cur_queue_size(0),
     isUpdataing(false),
     clearWave(true),
+    SENDSIZE(sendsize),
     lastShowpeakNum(-1)//初始化为不可能的数据
 {
     ui->setupUi(this);
@@ -149,6 +150,11 @@ void MainWidget::startSetRange()
     timer->stop();
 }
 
+int& MainWidget::setSENDSIZE(int &sendsize)
+{
+    SENDSIZE = sendsize;
+    return SENDSIZE;
+}
 
 void MainWidget::updateData(CirQueue<float> *waveque, int peaknum)
 {

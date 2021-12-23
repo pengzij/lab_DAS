@@ -5,7 +5,9 @@
 #include <QMessageBox>
 #include <QMutex>
 
-UDPConnect::UDPConnect(Config *cfig)
+UDPConnect::UDPConnect(Config *cfig, int& sendsize):
+    SENDSIZE(sendsize),
+    hasNextFilename(false)
 {
     AddressIP.setAddress(cfig->m_demodulation->IP.c_str());
     this->port = cfig->m_demodulation->Port;
@@ -17,8 +19,10 @@ UDPConnect::UDPConnect(Config *cfig)
     isSend = cfig->m_DataProcess->m_isSend;
     waveLength = cfig->m_DataProcess->m_WaveFormLength;
     hasSend = 0;
-    pFile= new FILE *[PeakNum];
     path = new QString[PeakNum];
+    filesize = (int)(frequency / SENDSIZE) * 60;
+    outfile = make_shared<vector<ofstream>>();
+
     if(cfig->m_demodulation->m_CacPhase == std::string("false"))
     {
         DataType = SEND_ORIGNAL_DATA;
@@ -28,7 +32,7 @@ UDPConnect::UDPConnect(Config *cfig)
         DataType = SEND_PHASE_DATA;
     }
 
-
+    connect(this, SIGNAL(sendNextFile()), this, SLOT(changeFileName()));
 
 
     qDebug()<<"UDP Address : "<< AddressIP.toString()<< endl;
@@ -40,6 +44,7 @@ UDPConnect::UDPConnect(Config *cfig)
 UDPConnect::~UDPConnect()
 {
     qDebug() << "UDP deconstruct success" << endl;
+    delete[] path;
     delete[] QueData;
     //delete[] data;
 }
@@ -146,7 +151,9 @@ void UDPConnect::executeSendData(CirQueue<float>* que, char Type)
     if(is_saveData)
     {
         //qDebug()<<"save data2Bin()  181" <<endl;
-        saveData2Bin(QueData);
+        //cout << "outfile.size" << outfile->size() << endl;
+        bool emptyQueue = true;
+        saveData2Bin(QueData, emptyQueue);
 
 
     }
@@ -277,8 +284,75 @@ void UDPConnect::loadSeriesData(char dataType)
 
     delete[] dat;
 }
+/*使用字节流存储*/
+void UDPConnect::saveData2Bin(float *data, bool &now)
+{
+    QMutexLocker locker1(&writeLock);
 
-void UDPConnect::saveData2Bin(float *data)//写入文件重写为ofstream
+    if(DataType == SEND_ORIGNAL_DATA)
+    {/* 存储原始3通道数据*/
+
+        for(size_t i = 0; i < 3 * PeakNum * SENDSIZE; ++i)
+        {
+
+            const float& tmp = data[i];
+            switch (i % 3)
+            {
+            case 0:
+                outfile1.write((const char*) &tmp, sizeof(float));
+                break;
+            case 1:
+                outfile2.write((const char*) &tmp, sizeof(float));
+                break;
+            case 2:
+                outfile3.write((const char*) &tmp, sizeof(float));
+                break;
+            default:
+                break;
+            }
+
+        }
+        if(outfile1.tellp() >= frequency * 60 * 4 * PeakNum && hasNextFilename)
+        {
+            locker1.unlock();
+            emit sendNextFile();
+        }
+    }
+    else
+    {/* 存储解调数据*/
+        cout << "outfile.size" << outfile->size() << endl;
+        auto itn = outfile->begin();
+        for(size_t i = 0; i < PeakNum * SENDSIZE; ++i)
+        {
+            const float &tmp = data[i];
+
+            if(itn != outfile->cend())
+            {
+                itn->write((const char*) &tmp, sizeof(float));
+                //qDebug() << "pos = "  << itn->tellp() << endl;
+                ++itn;
+
+            }
+            else
+            {
+                itn = outfile->begin();
+                itn->write((const char*) &tmp, sizeof(float));
+                ++itn;
+            }
+        }
+       itn = outfile->begin();
+       if(itn->tellp() >= frequency * 60 * 4 && hasNextFilename)
+       {
+           locker1.unlock();
+           emit sendNextFile();
+       }
+
+    }
+
+}
+
+/*旧版存储函数，已经弃用*/
+void UDPConnect::saveData2Bin(float *data)
 {
     QMutexLocker locker1(&writeLock);
     if(DataType == SEND_ORIGNAL_DATA)
@@ -305,10 +379,12 @@ void UDPConnect::saveData2Bin(float *data)//写入文件重写为ofstream
 
     }
     else
-    {//存储区域2、4、6、8、10、12、14、16、18、20的数据（根据寻峰的改变可能会变成1、3、5.....)
-
-       float (*area)[SENDSIZE];
-        area=new float[PeakNum][SENDSIZE]();
+    {
+        float **area = new float*[PeakNum];
+        for(size_t i = 0; i < PeakNum; ++i)
+        {
+            area[i] = new float[SENDSIZE];
+        }
         for(size_t i=0;i<PeakNum;i++)
         {
             for(size_t n=0;n<SENDSIZE;n++)
@@ -329,45 +405,156 @@ void UDPConnect::saveData2Bin(float *data)//写入文件重写为ofstream
     }
 }
 
-void UDPConnect::changeFileName()
+/* 初次生成存储文件名*/
+void UDPConnect::changeFileNameOnce(QDateTime &systemDate, QTime &systemTime)
 {
-    QMutexLocker locker1(&writeLock);
+//    if(DataType == SEND_ORIGNAL_DATA)
+//    {
+
+//        QString path1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
+//                +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+//        QString path2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
+//                +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+//        QString path3 = QString(saveFolder.c_str())+QString("/[CH3][")+QString::number(PeakNum)
+//                +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+
+//        pFile[0] = fopen(path1.toStdString().c_str(),"ab+");
+//        pFile[1] = fopen(path2.toStdString().c_str(),"ab+");
+//        pFile[2] = fopen(path3.toStdString().c_str(),"ab+");
+//    }
+//    else
+//    {
+//        for(int i=0;i<PeakNum;i++)
+//        {
+//             path[i] =QString(saveFolder.c_str())+QString("/[")+QString::number(i)+QString("]")+
+//             systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss")+QString("_")+QString::number((int)(frequency/1000))+QString("KHz.bin");
+//        }
+
+//        for(int i=0;i<PeakNum;i++)
+//        {
+//             pFile[i]=fopen(path[i].toStdString().c_str(),"ab+");
+//        }
+//    }
     if(DataType == SEND_ORIGNAL_DATA)
     {
-        fclose(pFile[0]);
-        fclose(pFile[1]);
-        fclose(pFile[2]);
 
-        systemDate = QDateTime::currentDateTime();
-        systemTime = QTime::currentTime();
-        QString path1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
+        saveFilename1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
                 +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
-        QString path2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
+        saveFilename2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
                 +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
-        QString path3 = QString(saveFolder.c_str())+QString("/[CH3][")+QString::number(PeakNum)
+        saveFilename3 = QString(saveFolder.c_str())+QString("/[CH3][")+QString::number(PeakNum)
                 +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
 
-        //qDebug()<<"file Name:" << path1;
+        outfile1 = ofstream(saveFilename1.toStdString().data(), ofstream::binary);
+        outfile2 = ofstream(saveFilename2.toStdString().data(), ofstream::binary);
+        outfile3 = ofstream(saveFilename3.toStdString().data(), ofstream::binary);
 
-        //QMessageBox::information(NULL,"Fileapth",path1.toStdString().c_str());
-
-        pFile[0] = fopen(path1.toStdString().c_str(),"ab+");
-        pFile[1] = fopen(path2.toStdString().c_str(),"ab+");
-        pFile[2] = fopen(path3.toStdString().c_str(),"ab+");
     }
     else
     {
-        systemDate = QDateTime::currentDateTime();
-        systemTime = QTime::currentTime();
+        //systemDate = QDateTime::currentDateTime();
+        //systemTime = QTime::currentTime();
         for(int i=0;i<PeakNum;i++)
         {
-            fclose(pFile[i]);
+//            fclose(pFile[i]);
             path[i] =QString(saveFolder.c_str())+QString("/[")+QString::number(i)+QString("]")+
             systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss")+QString("_")+QString::number((int)(frequency/1000))+QString("KHz.bin");
         }
         for(int i=0;i<PeakNum;i++)
         {
-            pFile[i]=fopen(path[i].toStdString().c_str(),"ab+");
+//            pFile[i]=fopen(path[i].toStdString().c_str(),"ab+");
+            ofstream of(path[i].toStdString().data(), ofstream::binary);
+            outfile->push_back(std::move(of));//ofstream没有拷贝构造函数，因此只能用移动构造函数
+            qDebug() << "outfilesize 442:" << outfile->size();
         }
+
     }
 }
+
+void UDPConnect::changeFileName()
+{
+
+    QMutexLocker locker1(&writeLock);
+    if(DataType == SEND_ORIGNAL_DATA)
+    {
+        outfile1.close();
+        outfile2.close();
+        outfile3.close();
+//        fclose(pFile[0]);
+//        fclose(pFile[1]);
+//        fclose(pFile[2]);
+
+//        systemDate = QDateTime::currentDateTime();
+//        systemTime = QTime::currentTime();
+//        saveFilename1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
+//                +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+//        saveFilename2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
+//                +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+//        saveFilename3 = QString(saveFolder.c_str())+QString("/[CH3][")+QString::number(PeakNum)
+//                +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+
+        outfile1 = ofstream(saveFilename1.toStdString().data(), ofstream::binary);
+        outfile2 = ofstream(saveFilename2.toStdString().data(), ofstream::binary);
+        outfile3 = ofstream(saveFilename3.toStdString().data(), ofstream::binary);
+//        pFile[0] = fopen(saveFilename1.toStdString().c_str(),"ab+");
+//        pFile[1] = fopen(saveFilename2.toStdString().c_str(),"ab+");
+//        pFile[2] = fopen(saveFilename3.toStdString().c_str(),"ab+");
+    }
+    else
+    {
+        if(outfile->size() > 0)
+        {
+            for(auto& outf : *outfile) outf.close();
+            outfile->clear();
+        }
+
+//        systemDate = QDateTime::currentDateTime();
+//        systemTime = QTime::currentTime();
+//        for(int i=0;i<PeakNum;i++)
+//        {
+//            fclose(pFile[i]);
+//            path[i] =QString(saveFolder.c_str())+QString("/[")+QString::number(i)+QString("]")+
+//            systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss")+QString("_")+QString::number((int)(frequency/1000))+QString("KHz.bin");
+//        }
+        for(int i=0;i<PeakNum;i++)
+        {
+//            pFile[i]=fopen(path[i].toStdString().c_str(),"ab+");
+            ofstream of(path[i].toStdString().data(), ofstream::binary);
+            outfile->push_back(std::move(of));//ofstream没有拷贝构造函数，因此只能用移动构造函数
+        }
+
+    }
+    hasNextFilename = false;//重置文件名标志
+    locker1.unlock();
+}
+
+/*产生下一个文件的文件名*/
+void UDPConnect::getFilename()
+{
+    QDateTime nextDate = QDateTime::currentDateTime();
+    QTime nextTime = QTime::currentTime();
+    if(DataType == SEND_ORIGNAL_DATA)
+    {
+        saveFilename1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
+                +QString("]")+nextDate.toString("yyyyMMdd")+nextTime.toString("hhmmss") + QString(".bin");
+        saveFilename2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
+                +QString("]")+nextDate.toString("yyyyMMdd")+nextTime.toString("hhmmss") + QString(".bin");
+        saveFilename3 = QString(saveFolder.c_str())+QString("/[CH3][")+QString::number(PeakNum)
+                +QString("]")+nextDate.toString("yyyyMMdd")+nextTime.toString("hhmmss") + QString(".bin");
+    }
+    else
+    {
+        for(int i = 0; i < PeakNum; ++i)
+        {
+            path[i] =QString(saveFolder.c_str())+QString("/[")+QString::number(i)+QString("]")+
+            nextDate.toString("yyyyMMdd")+nextTime.toString("hhmmss")+QString("_")+QString::number((int)(frequency/1000))+QString("KHz.bin");
+        }
+     }
+    hasNextFilename = true;//已经过了1分钟，获取了下一分钟的文件名
+}
+
+//int& UDPConnect::setSENDSIZE(int &sendsize)
+//{
+//    SENDSIZE = sendsize;
+//    return SENDSIZE;
+//}

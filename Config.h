@@ -42,6 +42,12 @@ public:
         m_Unwrap = unwrap;
         m_LpFilter = lpfilter;
     }
+
+    bool getFilter() const
+    {
+        return m_Filt == "true" ? true : false;
+    }
+
     void setPeakNum(int peakNum){
         m_peakNum = peakNum;
     }

@@ -35,10 +35,11 @@ class MainWidget : public QWidget
 
 public:
     //fre:30对应30kHz tmInterval:25ms时间间隔对应刷新频率50Hz
-    MainWidget(int fre = 30, int tmInterval = 25, int window_max_x = 10000, int xScale = 10, QWidget *parent = 0);
+    MainWidget(int sendsize = 9000, int fre = 30, int tmInterval = 25, int window_max_x = 10000, int xScale = 10, QWidget *parent = 0);
     ~MainWidget();
     void initUI(int );
     void getpeakNum(int);
+    int& setSENDSIZE(int &);
 
 
 private:
@@ -90,6 +91,7 @@ private:
     int wavecase;
     int cur_x;
     int cur_show_x;
+    int SENDSIZE;
 
 public slots:
 

@@ -26,7 +26,6 @@
 #include "CirQueue.h"
 #define FILTERODR 6
 #define LPFILTERODR 10
-#define SENDSIZE 9000
 #define NUMTABLE 201
 
 //#define fre 5
@@ -39,7 +38,7 @@ class Demodulation : public QThread
 {
     Q_OBJECT
 public:
-    Demodulation(HWND hWnd);
+    Demodulation(HWND hWnd, bool setShow);
 
     Demodulation(HWND hWnd,Config *cfig);
 
@@ -79,6 +78,7 @@ public:
     vector<float> debugReadData(QString filename, bool &filend, int &pos);
     void debugdemoduPhase(int vectornum);
 
+    int& setSENDSIZE(int &);
 
 
 signals:
@@ -119,6 +119,10 @@ private:
 
     inline void showDemoduImformation(Config *);
 
+    int SENDSIZE;
+
+    const bool is_SendShowData;
+
 public:
 
     int peakNum;
@@ -154,7 +158,6 @@ public:
     float (*FilterReg)[LPFILTERODR];
 
     float *output;
-    float *waveout;
     float *atanTable;
     float *FilterCoeff;
     float *LPFilterCoeff;

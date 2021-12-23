@@ -1,6 +1,8 @@
 #ifndef UDPCONNECT_H
 #define UDPCONNECT_H
+#include <iostream>
 #include <string>
+#include <algorithm>
 #include <QUdpSocket>
 #include <QHostAddress>
 #include "Config.h"
@@ -16,6 +18,7 @@
 #include <QDateTime>
 #include <QTime>
 #include <QTimer>
+#include <memory>
 
 using namespace QtCharts;
 using namespace std;
@@ -30,7 +33,7 @@ class UDPConnect : public QObject
 {
     Q_OBJECT
 public:
-    UDPConnect(Config *cfig);
+    UDPConnect(Config *cfig, int& sendsize);
     ~UDPConnect();
     long getHasSend(){
         return hasSend;
@@ -41,7 +44,9 @@ public slots:
     void changeSelectFBG(int FBG1,int FBG2, int FBG3);
 
     void changeFileName();
+    void getFilename();
     void executeData();
+
 public:
     QHostAddress AddressIP;
     QUdpSocket *socket = NULL;
@@ -49,12 +54,14 @@ public:
     int PeakNum;
     int frequency;
 
-
+    void changeFileNameOnce(QDateTime &systemDate, QTime &systemTime);
     int sendData(CirQueue<float>* que,char dataType);
     void loadSeriesData(char dataType);
     void initSeriesParam(QLineSeries *line1, QLineSeries *line2, QLineSeries *line3);
 
-    void saveData2Bin(float* data);
+    void saveData2Bin(float* data, bool &now);
+    void saveData2Bin(float *data);
+    //int& setSENDSIZE(int &sendsize);
 
     QLineSeries *m_lineSeries_1;
     QLineSeries *m_lineSeries_2;
@@ -87,6 +94,7 @@ public:
 
     QString *path;
     FILE **pFile=NULL;
+
     QTimer saveTimer;
 
     QTime systemTime;
@@ -98,7 +106,20 @@ public:
 
 private:
     QMutex writeLock;
+    QString saveFilename1;
+    QString saveFilename2;
+    QString saveFilename3;
+    QString *saveFilename;
+    ofstream outfile1;
+    ofstream outfile2;
+    ofstream outfile3;
+    shared_ptr<vector<ofstream>> outfile;
+    int SENDSIZE;
+    int filesize;
+    bool hasNextFilename;
 
+signals:
+    void sendNextFile();
 };
 
 #endif // UDPCONNECT_H

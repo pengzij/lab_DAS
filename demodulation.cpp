@@ -11,16 +11,20 @@
 int t1=0,t2=0;
 using namespace std;
 
-Demodulation::Demodulation(HWND hWnd)
+Demodulation::Demodulation(HWND hWnd, bool setShow):
+    SENDSIZE(9000),
+    is_SendShowData(setShow)
 {
     this->m_hWnd = hWnd;
     sendQueue.setSize(65536000);
-    DisplayQueue.setSize(65536000);
+    if(is_SendShowData)
+        DisplayQueue.setSize(65536000);
 
 }
 
 
-Demodulation::Demodulation(HWND hWnd,Config *cfig)
+Demodulation::Demodulation(HWND hWnd,Config *cfig):
+    is_SendShowData(false)
 {
     this->m_hWnd = hWnd;
     sendQueue.setSize(65536000);
@@ -37,6 +41,12 @@ Demodulation::~Demodulation()
     delete USB;
     }
     qDebug() << "Demodulation deconstruct success" << endl;
+}
+
+int& Demodulation::setSENDSIZE(int& sendsize)
+{
+    SENDSIZE = sendsize;
+    return SENDSIZE;
 }
 
 void Demodulation::debugInit(Config *cfig)
@@ -284,7 +294,7 @@ void Demodulation::Init(Config *cfig, int mode)
     }
 
     output = new float[peakNum]();
-    waveout = new float[peakNum]();
+
 
     CH1Data = new unsigned short[peakNum]();
     CH2Data = new unsigned short[peakNum]();
@@ -531,8 +541,8 @@ void Demodulation::demoduPhase()
             }
 
             sendQueue.push(output[i]);
-            DisplayQueue.push(output[i]);
-            waveout[i] = output[i];
+            if(is_SendShowData) DisplayQueue.push(output[i]);
+
         }
 
 }
@@ -633,8 +643,8 @@ void Demodulation::debugdemoduPhase(int vectornum)
                 output[i] = Ph[i];
                 sendQueue.push(output[i]);
             }
-            DisplayQueue.push(output[i]);
-            waveout[i] = output[i];
+            if(is_SendShowData) DisplayQueue.push(output[i]);
+
         }
 
 }
@@ -777,9 +787,10 @@ void Demodulation::debugRunDemodu()
                         //qDebug()<<"SEND";
                         //emit sendData(SENDSIZE);
                         //qDebug() << "sendWaveData len = " << DisplayQueue.size() << endl;
-                        emit sendWaveData(&DisplayQueue, peakNum);
+                        if(is_SendShowData) emit sendWaveData(&DisplayQueue, peakNum);
                         emit sendDataBegin(&sendQueue,demoduType);
                         term = 0;
+                        //qDebug() << &sendQueue << endl;
                     }
 
 
@@ -894,7 +905,7 @@ void Demodulation::run()
                     if(term >= SENDSIZE)
                     {
                         //qDebug() << "sendQueue len = " << sendQueue.size() << endl;
-                        emit sendWaveData(&DisplayQueue, peakNum);
+                        if(is_SendShowData) emit sendWaveData(&DisplayQueue, peakNum);
 
                         emit sendDataBegin(&sendQueue,demoduType);
 
@@ -987,7 +998,7 @@ void Demodulation::FreeMemory()
     delete[] RECORD_BUF;
 
     delete[] output;
-    delete[] waveout;
+
     delete[] CH1Data;
     delete[] CH2Data;
     delete[] CH3Data;

@@ -37,6 +37,7 @@ public:
     QSound *sound = NULL;
     QString wavPath[10];
     int wavFre;
+    int& setSENDSIZE(int);
 
 
 private slots:
@@ -105,6 +106,10 @@ private:
     void debugDemudu();
 
     inline void isShowWindow(Demodulation*);
+
+    int SENDSIZE;
+
+    bool setShow();
 
 
 signals:

@@ -33,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent) :
     Config::instance()->Init(path);
     MinWignoreDevice = Config::instance()->m_Program->ignoreDevice();
     CaculationPhase = Config::instance()->m_demodulation->getCacPhase();
+    setSENDSIZE( (int)(Config::instance()->m_FPGACard->m_freq / 4) );//根据采样率初始化单次发送数据包大小
     if( MinWignoreDevice == true )
     {
         cout << "main37" << endl;
@@ -101,6 +102,18 @@ MainWindow::~MainWindow()
     }
     qDebug() << "MainWindow deconstruct end" << endl;
 }
+
+bool MainWindow::setShow()
+{
+    return CaculationPhase & Config::instance()->m_demodulation->getFilter();
+}
+
+int& MainWindow::setSENDSIZE(int sendsize)
+{
+    SENDSIZE = sendsize;
+    return SENDSIZE;
+}
+
 void MainWindow::on_Eazystart_Button_clicked()
 {
     //关闭无关按键显示
@@ -285,11 +298,10 @@ void MainWindow::sendPeakPosData()
 
 void MainWindow::isShowWindow(Demodulation *demodu)
 {
-    if(CaculationPhase)
+    if(setShow())
     {
         //初始化波形显示窗口
-
-        wgt = new MainWidget(demodu->frequency / 1000);
+        wgt = new MainWidget(SENDSIZE, demodu->frequency / 1000);
         wgt->initUI(demodu->peakNum);
         connect(demodu, SIGNAL(sendWaveData(CirQueue<float>*,int)), wgt, SLOT(updateData(CirQueue<float>*, int)) );
         wgt->show();
@@ -307,7 +319,7 @@ void MainWindow::debugDemudu()//debug模式进入demodulation
     ui->StateText->append(info);
     ui->Demodu_Button->setEnabled(false);
     ui->DemoduStop_Button->setEnabled(true);
-    this->Demodu = new Demodulation(hWnd);
+    this->Demodu = new Demodulation(hWnd, setShow());
     connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
     Demodu->Init(Config::instance(), DEBUGMODE);
     connect(Demodu, SIGNAL(sendSpeed(double)), this, SLOT(textbrowserShowSpeed(double)));
@@ -317,7 +329,7 @@ void MainWindow::debugDemudu()//debug模式进入demodulation
     waveWidget->WidgetInit();
     waveWidget->paramInit(Config::instance());
 
-    UDP = new UDPConnect(Config::instance());
+    UDP = new UDPConnect(Config::instance(), SENDSIZE);
 
     UdpThread = new QThread();
     //UdpThread1 = new QThread();
@@ -363,8 +375,9 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
     ui->Demodu_Button->setEnabled(false);
     ui->DemoduStop_Button->setEnabled(true);
 
-    this->Demodu = new Demodulation(hWnd);
+    this->Demodu = new Demodulation(hWnd, setShow());
     connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
+    Demodu->setSENDSIZE(SENDSIZE);
     Demodu->Init(Config::instance(), RUNMODE);
     QString info1 = QString("Demodulation Init done!!   Start Demodu !!");
     ui->StateText->append(info1);
@@ -375,7 +388,7 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
     waveWidget->WidgetInit();
     waveWidget->paramInit(Config::instance());
 
-    UDP = new UDPConnect(Config::instance());
+    UDP = new UDPConnect(Config::instance(), SENDSIZE);
 
     UdpThread = new QThread();
     //UdpThread1 = new QThread();
@@ -517,38 +530,37 @@ void MainWindow::on_save_checkBox_clicked()
         string saveFolder = Config::instance()->m_DataProcess->m_path;
         QDateTime systemDate = QDateTime::currentDateTime();
         QTime systemTime = QTime::currentTime();
-        if(UDP->DataType == SEND_ORIGNAL_DATA)
-        {
+//        if(UDP->DataType == SEND_ORIGNAL_DATA)
+//        {
 
-            QString path1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
-                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
-            QString path2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
-                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
-            QString path3 = QString(saveFolder.c_str())+QString("/[CH3][")+QString::number(PeakNum)
-                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+//            QString path1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
+//                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+//            QString path2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
+//                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
+//            QString path3 = QString(saveFolder.c_str())+QString("/[CH3][")+QString::number(PeakNum)
+//                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
 
-            UDP->pFile[0] = fopen(path1.toStdString().c_str(),"ab+");
-            UDP->pFile[1] = fopen(path2.toStdString().c_str(),"ab+");
-            UDP->pFile[2] = fopen(path3.toStdString().c_str(),"ab+");
-        }
-        else
-        {
-            for(int i=0;i<PeakNum;i++)
-            {
-                 UDP->path[i] =QString(saveFolder.c_str())+QString("/[")+QString::number(i)+QString("]")+
-                 systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss")+QString("_")+QString::number((int)(UDP->frequency/1000))+QString("KHz.bin");
-            }
+//            UDP->pFile[0] = fopen(path1.toStdString().c_str(),"ab+");
+//            UDP->pFile[1] = fopen(path2.toStdString().c_str(),"ab+");
+//            UDP->pFile[2] = fopen(path3.toStdString().c_str(),"ab+");
+//        }
+//        else
+//        {
+//            for(int i=0;i<PeakNum;i++)
+//            {
+//                 UDP->path[i] =QString(saveFolder.c_str())+QString("/[")+QString::number(i)+QString("]")+
+//                 systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss")+QString("_")+QString::number((int)(UDP->frequency/1000))+QString("KHz.bin");
+//            }
 
-            for(int i=0;i<PeakNum;i++)
-            {
-                 UDP->pFile[i]=fopen(UDP->path[i].toStdString().c_str(),"ab+");
-            }
-        }
+//            for(int i=0;i<PeakNum;i++)
+//            {
+//                 UDP->pFile[i]=fopen(UDP->path[i].toStdString().c_str(),"ab+");
+//            }
+//        }
 
-
+        UDP->changeFileNameOnce(systemDate, systemTime);
         UDP->saveTimer.start(60000);//1min 新建一个bin文件
-
-        QObject::connect(&UDP->saveTimer,&QTimer::timeout,UDP,&UDPConnect::changeFileName);
+        QObject::connect(&UDP->saveTimer,&QTimer::timeout,UDP,&UDPConnect::getFilename);
 
     }
     else
