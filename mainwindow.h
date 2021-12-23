@@ -17,6 +17,7 @@
 #include "CirQueue.h"
 #include "waveform.h"
 #include "mainwidget.h"
+#include "getconfig.h"
 
 namespace Ui {
 class MainWindow;
@@ -77,6 +78,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
     HWND hWnd;
+    shared_ptr<GetConfig> getcfg;
     WzSerialPort *serialport;
     PeakSearch *peak;
 
@@ -114,6 +116,7 @@ private:
 
 signals:
     void sendPeakPosDone();
+    void stopSave();
 };
 
 #endif // MAINWINDOW_H

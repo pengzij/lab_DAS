@@ -29,7 +29,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
 
     string path = "C:/DAS/Config.txt";
-
+    Config cfg;
+    cfg.Init(path);
+    getcfg = make_shared<GetConfig>(cfg);
     Config::instance()->Init(path);
     MinWignoreDevice = Config::instance()->m_Program->ignoreDevice();
     CaculationPhase = Config::instance()->m_demodulation->getCacPhase();
@@ -46,7 +48,7 @@ MainWindow::MainWindow(QWidget *parent) :
         QString info1 = QString("Program Debugmode !!!!!");
         ui->StateText->append(info1);
 
-        QString info2 = QString("ignore peakInit and configDevice");
+        QString info2 = QString("ignore peakInit and conficgDevice");
         ui->StateText->append(info2);
     }
     else
@@ -252,6 +254,7 @@ void MainWindow::ConfirmPeakResult()
         connect(SendPeakPosTimer,&QTimer::timeout,this,&MainWindow::sendPeakPosData);
     }
     peak->savePeakNum(Config::instance());//从peakpos.txt中获取peaknum
+
     SystemTime = QTime::currentTime();
 
 }
@@ -411,7 +414,6 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
 
     connect(Demodu, SIGNAL(sendData(int)), this, SLOT(showSendText(int)));
 
-
     //初始化波形显示窗口
     //初始化波形显示窗口
     isShowWindow(Demodu);
@@ -530,57 +532,19 @@ void MainWindow::on_save_checkBox_clicked()
         string saveFolder = Config::instance()->m_DataProcess->m_path;
         QDateTime systemDate = QDateTime::currentDateTime();
         QTime systemTime = QTime::currentTime();
-//        if(UDP->DataType == SEND_ORIGNAL_DATA)
-//        {
 
-//            QString path1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
-//                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
-//            QString path2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
-//                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
-//            QString path3 = QString(saveFolder.c_str())+QString("/[CH3][")+QString::number(PeakNum)
-//                    +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
-
-//            UDP->pFile[0] = fopen(path1.toStdString().c_str(),"ab+");
-//            UDP->pFile[1] = fopen(path2.toStdString().c_str(),"ab+");
-//            UDP->pFile[2] = fopen(path3.toStdString().c_str(),"ab+");
-//        }
-//        else
-//        {
-//            for(int i=0;i<PeakNum;i++)
-//            {
-//                 UDP->path[i] =QString(saveFolder.c_str())+QString("/[")+QString::number(i)+QString("]")+
-//                 systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss")+QString("_")+QString::number((int)(UDP->frequency/1000))+QString("KHz.bin");
-//            }
-
-//            for(int i=0;i<PeakNum;i++)
-//            {
-//                 UDP->pFile[i]=fopen(UDP->path[i].toStdString().c_str(),"ab+");
-//            }
-//        }
 
         UDP->changeFileNameOnce(systemDate, systemTime);
         UDP->saveTimer.start(60000);//1min 新建一个bin文件
         QObject::connect(&UDP->saveTimer,&QTimer::timeout,UDP,&UDPConnect::getFilename);
+        connect(this, SIGNAL(stopSave()), UDP, SLOT(stopSaveSlot()) );
 
     }
     else
     {
         UDP->saveTimer.stop();
-        int PeakNum = UDP->PeakNum;
         UDP->is_saveData = false;
-        if (UDP->DataType == SEND_ORIGNAL_DATA)
-        {
-            fclose(UDP->pFile[0]);
-            fclose(UDP->pFile[1]);
-            fclose(UDP->pFile[2]);
-        }
-        else
-        {
-            for(int i=0;i<PeakNum;i++)
-            {
-                fclose(UDP->pFile[i]);
-            }
-        }
+        emit stopSave();//发出UDP停止存储信号
 
     }
 

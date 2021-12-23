@@ -51,6 +51,18 @@ public:
         cfig->m_demodulation->setPeakNum(peakNum[0]);
     }
 
+    void savePeakNum(Config* cfig, bool debug)
+    {
+        if(debug)
+        {
+            cfig->m_demodulation->setPeakNum(cfig->m_Program->m_peaknum);
+        }
+        else
+        {
+            cfig->m_demodulation->setPeakNum(peakNum[0]);
+        }
+    }
+
 	void setHWND(HWND hWnd)
 	{
 		m_hWnd = hWnd;

@@ -33,7 +33,8 @@ SOURCES += main.cpp\
     waveplot.cpp \
     callout.cpp \
     chartview.cpp \
-    mainwidget.cpp
+    mainwidget.cpp \
+    recvdata.cpp
 
 HEADERS  += mainwindow.h \
     wzserialport.h \
@@ -52,7 +53,9 @@ HEADERS  += mainwindow.h \
     wavhead.h \
     callout.h \
     chartview.h \
-    mainwidget.h
+    mainwidget.h \
+    recvdata.h \
+    getconfig.h
 
 FORMS    += mainwindow.ui \
     plot.ui \

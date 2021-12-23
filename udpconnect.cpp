@@ -465,7 +465,7 @@ void UDPConnect::changeFileNameOnce(QDateTime &systemDate, QTime &systemTime)
 //            pFile[i]=fopen(path[i].toStdString().c_str(),"ab+");
             ofstream of(path[i].toStdString().data(), ofstream::binary);
             outfile->push_back(std::move(of));//ofstream没有拷贝构造函数，因此只能用移动构造函数
-            qDebug() << "outfilesize 442:" << outfile->size();
+            //qDebug() << "outfilesize 442:" << outfile->size();
         }
 
     }
@@ -553,8 +553,21 @@ void UDPConnect::getFilename()
     hasNextFilename = true;//已经过了1分钟，获取了下一分钟的文件名
 }
 
-//int& UDPConnect::setSENDSIZE(int &sendsize)
-//{
-//    SENDSIZE = sendsize;
-//    return SENDSIZE;
-//}
+void UDPConnect::stopSaveSlot()
+{
+    if(DataType == SEND_ORIGNAL_DATA)
+    {
+        outfile1.close();
+        outfile2.close();
+        outfile3.close();
+    }
+    else
+    {
+        if(outfile->size() > 0)
+        {
+            for(auto& outf : *outfile) outf.close();
+
+            outfile->clear();
+        }
+    }
+}

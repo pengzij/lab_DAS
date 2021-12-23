@@ -46,6 +46,7 @@ public slots:
     void changeFileName();
     void getFilename();
     void executeData();
+    void stopSaveSlot();
 
 public:
     QHostAddress AddressIP;
