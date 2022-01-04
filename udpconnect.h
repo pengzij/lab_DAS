@@ -29,26 +29,18 @@ using namespace std;
 #define SEND_UNFILT_PHASE_DATA          ((char)0x04)
 #define SEND_PHASE_DATA                 ((char)0x05)
 
-class UDPConnect : public QObject
+class UDPConnect :public QObject
 {
     Q_OBJECT
 public:
-    UDPConnect(Config *cfig, int& sendsize);
+    UDPConnect() = default;
+    UDPConnect(const Config *cfig, int& sendsize);
+    UDPConnect(shared_ptr<GetConfig> gcfg, shared_ptr<CirQueue<float>> saveque);
     ~UDPConnect();
     long getHasSend(){
         return hasSend;
     }
 
-public slots:
-    void executeSendData(CirQueue<float>* que, char Type);
-    void changeSelectFBG(int FBG1,int FBG2, int FBG3);
-
-    void changeFileName();
-    void getFilename();
-    void executeData();
-    void stopSaveSlot();
-
-public:
     QHostAddress AddressIP;
     QUdpSocket *socket = NULL;
     int port;
@@ -104,8 +96,9 @@ public:
     bool is_saveData = false;
 
 
-
 private:
+    shared_ptr<GetConfig> UDPgcfg;
+    shared_ptr<CirQueue<float>> saveDataQue;
     QMutex writeLock;
     QString saveFilename1;
     QString saveFilename2;
@@ -118,6 +111,23 @@ private:
     int SENDSIZE;
     int filesize;
     bool hasNextFilename;
+    unsigned long onceSaveNum;
+    unsigned long saveNum;
+    QTimer* udpTimer;
+
+
+    void saveOriData(const unsigned long & num);
+    void saveDemoduData(const unsigned long& num);
+
+public slots:
+    void executeSendData(CirQueue<float>* que, char Type);
+    void changeSelectFBG(int FBG1,int FBG2, int FBG3);
+
+    void changeFileName();
+    void getFilename();
+    void executeData();
+    void stopSaveSlot();
+    void checkSaveSlot();
 
 signals:
     void sendNextFile();

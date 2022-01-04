@@ -85,6 +85,7 @@ bool Config::get_word_bool(string &str, string name) {
 	if (pos == string::npos) {
 		sprintf(logStr, "Can't find %s \n", name.c_str());
         LOG(logStr, "C:/DAS/log.txt");
+        throw runtime_error(string("can't find ") + name);
 	}
 
     unsigned int i = pos + 1;
@@ -211,6 +212,7 @@ void Config::Init(string path) {
     string unwrap = get_word_type(m_configStr,"UnWrap");
     string lpfilter = get_word_type(m_configStr,"LpFilter");
 
+
     m_demodulation = new ConfigDemodulation(calphase,filt,lpfilter,unwrap);
     string AddressIP = get_word_type(m_configStr,"IP");
 
@@ -230,6 +232,18 @@ void Config::Init(string path) {
     float ValueMax = get_word_float(m_configStr,"ValueMax");
     bool send = get_word_bool(m_configStr,"IsSend");
 	m_DataProcess = new ConfigDataProcess(savepath,isSave,wavelen,ValueMax,ValueMin,send);
+    bool iswave;
+    try
+    {
+        iswave = get_word_bool(m_configStr, "IsWave");
+    }
+    catch(runtime_error& e)
+    {
+        std::cerr << e.what() << " default value is true" << endl;
+        iswave = true;//默认true
+    }
+
+    m_Wavesp = make_shared<ConfigWave>(iswave);
 
     qDebug() << wavelen << endl;
     bool debugmode = get_word_bool(m_configStr, "DebugMode");

@@ -16,12 +16,13 @@ class PeakSearch: public QThread
 {
     Q_OBJECT
 public:
-	PeakSearch();
+    PeakSearch() = default;
+    PeakSearch(shared_ptr<GetConfig>& gcfg, HWND hWnd);
     ~PeakSearch();
 	
 	void data_calibration(unsigned short step, unsigned short* &data_need_to_be_processed);
 	
-    void SetParam(Config *cfig);
+    void SetParam(const Config *cfig);
 	void SetParam(unsigned int startPoint,
 		unsigned int ch1TH,
 		unsigned int ch2TH,
@@ -36,7 +37,7 @@ public:
 
     void readTxt2Peak();
 
-	void Init(Config *cfig,HWND hWnd);
+    void Init(const Config *cfig,HWND hWnd);
 
     void run();
 
@@ -51,7 +52,7 @@ public:
         cfig->m_demodulation->setPeakNum(peakNum[0]);
     }
 
-    void savePeakNum(Config* cfig, bool debug)
+    void savePeakNum(Config* cfig, bool debug)//获取peakNum值
     {
         if(debug)
         {
@@ -97,6 +98,8 @@ public:
 
 	BYTE* RECORD_BUF;
 
+private:
+    shared_ptr<GetConfig> PSgcfg;
 
 };
 

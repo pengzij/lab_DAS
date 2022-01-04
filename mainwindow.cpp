@@ -29,18 +29,19 @@ MainWindow::MainWindow(QWidget *parent) :
 
 
     string path = "C:/DAS/Config.txt";
-    Config cfg;
-    cfg.Init(path);
-    getcfg = make_shared<GetConfig>(cfg);
-    Config::instance()->Init(path);
-    MinWignoreDevice = Config::instance()->m_Program->ignoreDevice();
-    CaculationPhase = Config::instance()->m_demodulation->getCacPhase();
-    setSENDSIZE( (int)(Config::instance()->m_FPGACard->m_freq / 4) );//根据采样率初始化单次发送数据包大小
+    cfg = make_shared<Config>();
+    cfg->Init(path);
+    getcfg = make_shared<GetConfig>(*cfg);
+    MinWignoreDevice = getcfg->getConfig_Debug();
+    CaculationPhase = getcfg->getConfig_calcPhase();
+    CHDataQue = make_shared<CirQueue<float>>(getcfg->getConfig_freqency()* 3 * 600);//循环队列长度为原始通道数据10min的数据量
+    demoduDataQue = make_shared<CirQueue<float>>(getcfg->getConfig_freqency()* 3 * 600);//循环队列长度为原始通道数据10min的数据量
+    WaveDataQue = make_shared<CirQueue<float>>(getcfg->getConfig_freqency()* 3 * 600);
+    setSENDSIZE( (int)(getcfg->getConfig_freqency() / 4) );//根据采样率初始化单次发送数据包大小
     if( MinWignoreDevice == true )
     {
-        cout << "main37" << endl;
         string debugpath = "C:/DAS/debug.txt";
-        Config::instance()->InitDebug(debugpath);
+        getcfg->myConfig.InitDebug(debugpath);
 
         PostMessage(hWnd, SERIAL_WRITE_CONFIG_COMMAND_FINISHED, 0, 0);
         qDebug() << "ignore peakInit and configDevice" << endl;
@@ -54,9 +55,9 @@ MainWindow::MainWindow(QWidget *parent) :
     else
     {
 
-        peak = new PeakSearch();
-        peak->Init(Config::instance(),hWnd);
-        peak->ConfigDevice();
+        peak = new PeakSearch(getcfg, hWnd);
+        //peak->Init(getcfg->getPointoConfig(),hWnd);
+        //peak->ConfigDevice();
         is_peakExist = true;
     }
 
@@ -75,8 +76,6 @@ MainWindow::~MainWindow()
         plt->~Plot();
         qDebug() << "Plot deconstruct end" << endl;
     }
-
-    qDebug()<<Demodu<<endl;
 
     if(Demodu != NULL)
     {
@@ -107,7 +106,7 @@ MainWindow::~MainWindow()
 
 bool MainWindow::setShow()
 {
-    return CaculationPhase & Config::instance()->m_demodulation->getFilter();
+    return getcfg->myConfig.m_Wavesp->getIsWave();
 }
 
 int& MainWindow::setSENDSIZE(int sendsize)
@@ -132,7 +131,7 @@ void MainWindow::on_Eazystart_Button_clicked()
         QString info = QString("MinWindow ignore RearchPeak and ConfirmPeak");
         ui->StateText->append(info);
 
-        debugDemudu();
+        debugDemudu(1);
     }
     else
     {
@@ -150,7 +149,7 @@ void MainWindow::on_Eazystart_Button_clicked()
         connect(this, &MainWindow::sendPeakPosDone, this, &MainWindow::on_Demodu_Button_clicked);
     }
 
-    QString info = QString("Version Inmormation: v0.4.1 \n") + QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\teazystart finish, demodulation running...");
+    QString info = QString("Version Inmormation: v0.4.4 \n") + QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\teazystart finish, demodulation running...");
     ui->StateText->append(info);
 
 }
@@ -253,7 +252,7 @@ void MainWindow::ConfirmPeakResult()
         SendPeakPosTimer->start(1000);//从peak.txt中读取的时间差
         connect(SendPeakPosTimer,&QTimer::timeout,this,&MainWindow::sendPeakPosData);
     }
-    peak->savePeakNum(Config::instance());//从peakpos.txt中获取peaknum
+    peak->savePeakNum(getcfg->getPointoConfig(), MinWignoreDevice);//从peakpos.txt中获取peaknum
 
     SystemTime = QTime::currentTime();
 
@@ -267,6 +266,7 @@ void MainWindow::showSendText(int sendsize)
 
 void MainWindow::showText(QString text)
 {
+    qDebug() << "showText" << text << endl;
     ui->StateText->append(text);
 }
 
@@ -304,17 +304,17 @@ void MainWindow::isShowWindow(Demodulation *demodu)
     if(setShow())
     {
         //初始化波形显示窗口
-        wgt = new MainWidget(SENDSIZE, demodu->frequency / 1000);
-        wgt->initUI(demodu->peakNum);
-        connect(demodu, SIGNAL(sendWaveData(CirQueue<float>*,int)), wgt, SLOT(updateData(CirQueue<float>*, int)) );
-        wgt->show();
+        //wgt = new MainWidget(SENDSIZE, demodu->frequency / 1000);
+        //wgt->initUI(demodu->peakNum);
+        //connect(demodu, SIGNAL(sendWaveData(CirQueue<float>*,int)), wgt, SLOT(updateData(CirQueue<float>*, int)) );
+        //wgt->show();
     }
 }
 
-void MainWindow::debugDemudu()//debug模式进入demodulation
+void MainWindow::debugDemudu(bool)
 {
-
-
+    /* 按键初始化使能
+     * */
     ui->save_checkBox->setEnabled(true);
     ui->SearchPeak_Button->setEnabled(false);
     SystemTime = QTime::currentTime();
@@ -322,30 +322,60 @@ void MainWindow::debugDemudu()//debug模式进入demodulation
     ui->StateText->append(info);
     ui->Demodu_Button->setEnabled(false);
     ui->DemoduStop_Button->setEnabled(true);
-    this->Demodu = new Demodulation(hWnd, setShow());
+
+    /* 初始化接收数据成员
+     * */
+    RVD = make_shared<RecvData>(getcfg, CHDataQue);
+    connect(RVD.get(), SIGNAL(sendSpeed(double)), this, SLOT(textbrowserShowSpeed(double)));
+
+    /* 初始化解调成员
+     * */
+    Demodu = new Demodulation(true, getcfg, CHDataQue, demoduDataQue, WaveDataQue);
     connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
-    Demodu->Init(Config::instance(), DEBUGMODE);
+
+    /* 初始化存储数据成员
+     * */
+    UDP = new UDPConnect(getcfg, demoduDataQue);
+
+    wgt = new MainWidget(getcfg, WaveDataQue);
+    wgt->initUI();
+
+    RVD->start();//开启接收数据线程
+    Demodu->start();//开启解调线程
+    UDP->start();//开启存储线程
+    wgt->show();
+}
+
+void MainWindow::debugDemudu()//debug模式进入demodulation
+{
+    ui->save_checkBox->setEnabled(true);
+    ui->SearchPeak_Button->setEnabled(false);
+    SystemTime = QTime::currentTime();
+    QString info = QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\tStart Demodulation...");
+    ui->StateText->append(info);
+    ui->Demodu_Button->setEnabled(false);
+    ui->DemoduStop_Button->setEnabled(true);
+    Demodu = new Demodulation(hWnd, setShow());
+    connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
+    Demodu->Init(getcfg->getConstPointoConfig(), DEBUGMODE);
     connect(Demodu, SIGNAL(sendSpeed(double)), this, SLOT(textbrowserShowSpeed(double)));
     wavFre = Demodu->frequency;
 
     waveWidget = new WaveForm();
     waveWidget->WidgetInit();
-    waveWidget->paramInit(Config::instance());
+    waveWidget->paramInit(getcfg->getConstPointoConfig());
 
-    UDP = new UDPConnect(Config::instance(), SENDSIZE);
+    UDP = new UDPConnect(getcfg->getConstPointoConfig(), SENDSIZE);
 
-    UdpThread = new QThread();
+    //UdpThread = new QThread();
     //UdpThread1 = new QThread();
 
-    UDP->initSeriesParam(waveWidget->lineSeries_1,
-                         waveWidget->lineSeries_2,
-                         waveWidget->lineSeries_3);
+    //UDP->initSeriesParam(waveWidget->lineSeries_1,waveWidget->lineSeries_2,waveWidget->lineSeries_3);
 
-    UDP->moveToThread(UdpThread);
+    //UDP->moveToThread(UdpThread);
 
 
-    QObject::connect(waveWidget,SIGNAL(SelectFBGChanged(int,int,int)),
-             UDP, SLOT(changeSelectFBG(int,int,int)));
+    //QObject::connect(waveWidget,SIGNAL(SelectFBGChanged(int,int,int)),UDP, SLOT(changeSelectFBG(int,int,int)));
 
 
     qRegisterMetaType<CirQueue<float>>("CirQueue<float>");
@@ -378,47 +408,68 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
     ui->Demodu_Button->setEnabled(false);
     ui->DemoduStop_Button->setEnabled(true);
 
-    this->Demodu = new Demodulation(hWnd, setShow());
+    /* 初始化接收数据成员
+     * */
+    RVD = make_shared<RecvData>(getcfg, CHDataQue);
+    connect(RVD.get(), SIGNAL(sendSpeed(double)), this, SLOT(textbrowserShowSpeed(double)));
+
+    /* 初始化解调成员
+     * */
+    Demodu = new Demodulation(true, getcfg, CHDataQue, demoduDataQue, WaveDataQue);
     connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
-    Demodu->setSENDSIZE(SENDSIZE);
-    Demodu->Init(Config::instance(), RUNMODE);
-    QString info1 = QString("Demodulation Init done!!   Start Demodu !!");
-    ui->StateText->append(info1);
-    connect(Demodu, SIGNAL(sendSpeed(double)), this, SLOT(textbrowserShowSpeed(double)));
-    wavFre = Demodu->frequency;
 
-    waveWidget = new WaveForm();
-    waveWidget->WidgetInit();
-    waveWidget->paramInit(Config::instance());
+    /* 初始化存储数据成员
+     * */
+    UDP = new UDPConnect(getcfg, demoduDataQue);
 
-    UDP = new UDPConnect(Config::instance(), SENDSIZE);
+    wgt = new MainWidget(getcfg, WaveDataQue);
+    wgt->initUI();
 
-    UdpThread = new QThread();
-    //UdpThread1 = new QThread();
+    RVD->start();//开启接收数据线程
+    Demodu->start();//开启解调线程
+    //UDP->start();//开启存储线程
+    wgt->show();
+//    Demodu = new Demodulation(hWnd, setShow());
+//    connect(Demodu, SIGNAL( sendShowQString(QString) ), this, SLOT(showText(QString)) );
+//    Demodu->setSENDSIZE(SENDSIZE);
+//    Demodu->Init(getcfg->getPointoConfig(), RUNMODE);
+//    QString info1 = QString("Demodulation Init done!!   Start Demodu !!");
+//    ui->StateText->append(info1);
+//    connect(Demodu, SIGNAL(sendSpeed(double)), this, SLOT(textbrowserShowSpeed(double)));
+//    wavFre = Demodu->frequency;
 
-    UDP->initSeriesParam(waveWidget->lineSeries_1,
-                         waveWidget->lineSeries_2,
-                         waveWidget->lineSeries_3);
+//    waveWidget = new WaveForm();
+//    waveWidget->WidgetInit();
+//    waveWidget->paramInit(getcfg->getConstPointoConfig());
 
-    UDP->moveToThread(UdpThread);
+//    UDP = new UDPConnect(getcfg->getConstPointoConfig(), SENDSIZE);
+
+//    UdpThread = new QThread();
+//    //UdpThread1 = new QThread();
+
+//    UDP->initSeriesParam(waveWidget->lineSeries_1,
+//                         waveWidget->lineSeries_2,
+//                         waveWidget->lineSeries_3);
+
+//    UDP->moveToThread(UdpThread);
 
 
-    QObject::connect(waveWidget,SIGNAL(SelectFBGChanged(int,int,int)),
-             UDP, SLOT(changeSelectFBG(int,int,int)));
+//    QObject::connect(waveWidget,SIGNAL(SelectFBGChanged(int,int,int)),
+//             UDP, SLOT(changeSelectFBG(int,int,int)));
 
 
-    qRegisterMetaType<CirQueue<float>>("CirQueue<float>");
-    qRegisterMetaType<CirQueue<float>>("CirQueue<float>*");
-    QObject::connect(Demodu,SIGNAL(sendDataBegin(CirQueue<float>*,char)),
-                     UDP,SLOT(executeSendData(CirQueue<float>*,char)));
+//    qRegisterMetaType<CirQueue<float>>("CirQueue<float>");
+//    qRegisterMetaType<CirQueue<float>>("CirQueue<float>*");
+//    QObject::connect(Demodu,SIGNAL(sendDataBegin(CirQueue<float>*,char)),
+//                     UDP,SLOT(executeSendData(CirQueue<float>*,char)));
 
-    connect(Demodu, SIGNAL(sendData(int)), this, SLOT(showSendText(int)));
+//    connect(Demodu, SIGNAL(sendData(int)), this, SLOT(showSendText(int)));
 
-    //初始化波形显示窗口
-    //初始化波形显示窗口
-    isShowWindow(Demodu);
-    Demodu->start();
-    UdpThread->start();
+//    //初始化波形显示窗口
+//    //初始化波形显示窗口
+//    isShowWindow(Demodu);
+//    Demodu->start();
+//    UdpThread->start();
 
 
 }
@@ -426,26 +477,36 @@ void MainWindow::on_Demodu_Button_clicked()//开始解调 按键按下
 void MainWindow::on_DemoduStop_Button_clicked()
 {
 
+
     if(wgt != NULL)
     {
         wgt->close();
         delete wgt;
     }
+    RVD->stopRecvData();
+    RVD->wait();
+
+    UDP->saveTimer.stop();
+    UDP->is_saveData = false;
+    emit stopSave();//发出UDP停止存储信号
+    Sleep(10);//等待，确保UDP存储数据的函数中退出
+    delete UDP;
+    UDP = NULL;
 
     Demodu->stopDemodulation();
     Demodu->wait();
 
     delete Demodu;
-
     Demodu = NULL;
+
+
+
+
+    ui->save_checkBox->setCheckState(Qt::Unchecked);//设置成未勾选
     ui->save_checkBox->setEnabled(false);
     ui->Demodu_Button->setEnabled(true);
     ui->DemoduStop_Button->setEnabled(false);
-    UdpThread->quit();
-    UdpThread->wait();
-    delete UdpThread;
-    delete UDP;
-    UDP = NULL;
+
 }
 
 void MainWindow::on_Play_Button_clicked()
@@ -526,26 +587,19 @@ void MainWindow::on_save_checkBox_clicked()
 {
     if (ui->save_checkBox->isChecked())
     {
-
-        UDP->is_saveData = true;
-        int PeakNum = UDP->PeakNum;
-        string saveFolder = Config::instance()->m_DataProcess->m_path;
         QDateTime systemDate = QDateTime::currentDateTime();
         QTime systemTime = QTime::currentTime();
-
-
         UDP->changeFileNameOnce(systemDate, systemTime);
         UDP->saveTimer.start(60000);//1min 新建一个bin文件
         QObject::connect(&UDP->saveTimer,&QTimer::timeout,UDP,&UDPConnect::getFilename);
         connect(this, SIGNAL(stopSave()), UDP, SLOT(stopSaveSlot()) );
-
+        UDP->is_saveData = true;
     }
     else
     {
         UDP->saveTimer.stop();
         UDP->is_saveData = false;
         emit stopSave();//发出UDP停止存储信号
-
     }
 
 }

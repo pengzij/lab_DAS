@@ -24,7 +24,7 @@ WaveForm::~WaveForm()
 }
 
 
-void WaveForm::paramInit(Config *cfig)
+void WaveForm::paramInit(const Config *cfig)
 {
     peakNum = cfig->m_demodulation->m_peakNum;
     ValueMax = cfig->m_DataProcess->m_ValueMax;

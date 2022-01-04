@@ -18,11 +18,11 @@ public:
 
 public:
     int WriteCommand(char CommandOdr, int* dataBuf, int dataLen,int Channel);
-    int WriteCommand(char CommandOdr);
+    int WriteCommand(char CommandOdr, shared_ptr<GetConfig> WPgcfg);
 
     bool isSendCommandSuccessful(char CommanOdr);
 
-    bool Init(Config *cfig);
+    bool Init(const Config *cfig);
 
     void readMyCom();
     QSerialPort *Serial;

@@ -42,13 +42,15 @@ public:
 
     Demodulation(HWND hWnd,Config *cfig);
 
+    Demodulation(bool setSHow, const shared_ptr<GetConfig> gcfg, shared_ptr<CirQueue<float>> CHque, shared_ptr<CirQueue<float>> DMque, shared_ptr<CirQueue<float>> WaveDataque);
+
     ~Demodulation();
 
     void demoduPhase();
 
-    void Init(Config *cfig, int mode);
+    void Init(const Config *cfig, int mode);
 
-    void debugInit(Config *cfig);
+    //void debugInit(Config *cfig);
 
     void ReadFilterCoeff(float *coeff,float *LPFcoeff, string hpcutoff, string lpcutoff);
     void FilterCoeffCalculate(float *coeff);
@@ -76,9 +78,13 @@ public:
     //debug
     void debugRunDemodu();
     vector<float> debugReadData(QString filename, bool &filend, int &pos);
-    void debugdemoduPhase(int vectornum);
+    void debugdemoduPhase(int vectornum, vector<float>& savevec);
 
     int& setSENDSIZE(int &);
+    shared_ptr<CirQueue<float>> getDMDataSP()
+    {
+        return DMDataque;
+    }
 
 
 signals:
@@ -94,16 +100,18 @@ private:
 
     USBCtrl *USB;
     QMutex m_lock;
+    shared_ptr<GetConfig> DMgcfg;
+    shared_ptr<CirQueue<float>> CHDataque;
+    shared_ptr<CirQueue<float>> DMDataque;
 
     bool calcPhase;
     bool Unwraping;
     bool isFilter;
     bool isLPFilter;
+
     //bool UnwrapFilter;
     bool isUSBOpen;
-
     bool DebugDemodu;
-
     bool is_demoduRun;
 
     UDPConnect *UDP;
@@ -114,23 +122,19 @@ private:
     QTimer *timer2;
 
     int DemoduNum;
-
     inline void getCHdata(int &i, int &j, int &num);
-
-    inline void showDemoduImformation(Config *);
-
+    inline void showDemoduImformation(const Config *);
     int SENDSIZE;
-
     const bool is_SendShowData;
+    inline float unWrap_Filter(const float& ph, const int& i);
+    int OnceDemoduNum;
 
 public:
 
     int peakNum;
     int CHdatalen=0;
     int Mode;
-    unsigned short* CH1Data;
-    unsigned short* CH2Data;
-    unsigned short* CH3Data;
+    vector<float> CHDataVc;
 
     vector<float> debugCH1Data;
     vector<float> debugCH2Data;
@@ -168,7 +172,7 @@ public:
     bool demoduStop;
 
     CirQueue<float> sendQueue;
-    CirQueue<float> DisplayQueue;
+    shared_ptr<CirQueue<float>> DisplayQueue;
 
 
     int flag=0;

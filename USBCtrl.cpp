@@ -1,7 +1,7 @@
 #include "USBCtrl.h"
 #include <QDebug>
 #include <QMessageBox>
-USBCtrl::USBCtrl(Config *cfig)
+USBCtrl::USBCtrl(const Config *cfig)
 {
 	this->setParam(cfig);
 }
@@ -11,12 +11,20 @@ USBCtrl::USBCtrl(){}
 USBCtrl::~USBCtrl(){}
 
 
-void USBCtrl::setParam(Config *cfig) {
+void USBCtrl::setParam(const Config *cfig) {
 	m_bitCount = cfig->m_FPGACard->m_bitCount;
 	m_Freq = cfig->m_FPGACard->m_freq;
 	m_ChannelCount = cfig->m_FPGACard->m_channelCount;
 	m_LenofChannels = cfig->m_FPGACard->m_channelLen;
     packagePerRead = cfig->m_FPGACard->m_packagePerRead;
+}
+
+void USBCtrl::setParam(shared_ptr<GetConfig>& PSgcfg) {
+    m_bitCount = PSgcfg->getConfig_bitCount();
+    m_Freq = PSgcfg->getConfig_freqency();
+    m_ChannelCount = PSgcfg->getConfig_channelCount();
+    m_LenofChannels = PSgcfg->getConfig_channelLength();
+    packagePerRead = PSgcfg->getConfig_packagePerRead();
 }
 
 

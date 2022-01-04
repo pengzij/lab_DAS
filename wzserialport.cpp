@@ -6,7 +6,7 @@ WzSerialPort::WzSerialPort()
 }
 
 
-bool WzSerialPort::Init(Config *cfig)
+bool WzSerialPort::Init(const Config *cfig)
 {
     bool openSuc = false;
     int COM = cfig->m_FPGACard->m_portName;
@@ -52,10 +52,11 @@ void WzSerialPort::readMyCom(){
 /*commOdr = 3  Represent Start FPGA                             */
 /*commOdr = 4  Represent Start FPGA                             */
 /****************************************************************/
-int WzSerialPort::WriteCommand(char CommandOdr) {
+int WzSerialPort::WriteCommand(char CommandOdr, shared_ptr<GetConfig> WPgcfg) {
 
     int hasWrite = 0;
-
+    int fre = WPgcfg->getConfig_freqency();
+    int channelLen = WPgcfg->getConfig_channelLength();
     QByteArray comm;
 
     switch (CommandOdr)
@@ -72,16 +73,18 @@ int WzSerialPort::WriteCommand(char CommandOdr) {
 
         comm[10] = 0x22; comm[11] = 0x22;
 
-        comm[12] = (Config::instance()->m_FPGACard->m_freq >> 8) & 0xFF; comm[13] = (BYTE)(Config::instance()->m_FPGACard->m_freq) & 0xFF;
+        comm[12] = (fre >> 8) & 0xFF;
+
+        comm[13] = (BYTE)(fre) & 0xFF;
 
         comm[14] = 0x00; comm[15] = 0x0A;
 
         comm[16] = 0x00; comm[17] = 0x03;
 
-        comm[18] = (Config::instance()->m_FPGACard->m_channelLen>>24) & 0xFF;
-        comm[19] = (Config::instance()->m_FPGACard->m_channelLen >> 16) & 0xFF;
-        comm[20] = (Config::instance()->m_FPGACard->m_channelLen >> 8) & 0xFF;
-        comm[21] = (Config::instance()->m_FPGACard->m_channelLen ) & 0xFF;
+        comm[18] = (channelLen >> 24) & 0xFF;
+        comm[19] = (channelLen >> 16) & 0xFF;
+        comm[20] = (channelLen >> 8) & 0xFF;
+        comm[21] = (channelLen ) & 0xFF;
 
         comm[22] = 0x00; comm[23] = 0x00;
 

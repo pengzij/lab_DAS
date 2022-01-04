@@ -1,3 +1,6 @@
+/* @Decription 通过数组实现线程安全循环队列
+ * */
+
 #pragma once
 #include<stdlib.h>
 #include<stdio.h>
@@ -10,26 +13,32 @@ class CirQueue
 {
 public:
 	CirQueue();
-	CirQueue(unsigned long size);
+    CirQueue(unsigned long maxlen);
 	~CirQueue();
 public:
-	void setSize(unsigned long size);
+    void setMaxLen(unsigned long maxlen);
 	bool isEmpty();
 	bool isFull();
 
 	void push(T element);
 	T pop();
-	T head();
-	T last();
+    T front();
+    T back();
+    T* begin();
+    T* end();
     void clear();
+    unsigned long writePos();
+    unsigned long readPos();
 
-	unsigned long size();
-	unsigned long length();
+    unsigned long MaxLength();
+    unsigned long size();
 private:
 	T *m_data = NULL;
 	unsigned long m_front;
 	unsigned long m_rear;
-	unsigned long M_SIZE;
+    unsigned long M_LEN;
+    unsigned long M_wrpos;//当前写入位置
+    unsigned long M_rdpos;//当前读取位置
 public:
 
 };
@@ -42,15 +51,22 @@ CirQueue<T>::CirQueue()
 	m_data = NULL;
 	m_front = 0;
 	m_rear = 0;
-	M_SIZE = 0;
+    M_LEN = 0;
+    M_wrpos = 0;
+    M_rdpos = 0;
 }
+/**
+ * @brief 通过预先配置数组的空间大小构造队列，多线程对数组进行内存分配会出错
+ */
 template<typename T>
-CirQueue<T>::CirQueue(unsigned long size)
+CirQueue<T>::CirQueue(unsigned long maxlen)
 {
 	m_front = 0;
 	m_rear = 0;
-	M_SIZE = size;
-	m_data = new T[M_SIZE]();
+    M_rdpos = 0;
+    M_wrpos = 0;
+    M_LEN = maxlen;
+    m_data = new T[M_LEN]();
 }
 
 template<typename T>
@@ -59,24 +75,28 @@ CirQueue<T>::~CirQueue()
 	delete[] m_data;
 	m_data = NULL;
 }
-
+/**
+ * @brief 重新分配循环队列的内存大小
+ */
 template<typename T>
-void CirQueue<T>::setSize(unsigned long size)
+void CirQueue<T>::setMaxLen(unsigned long maxlen)
 {
 	m_front = 0;
 	m_rear = 0;
-	M_SIZE = size;
+    M_rdpos = 0;
+    M_wrpos = 0;
+    M_LEN = maxlen;
 	if (m_data != NULL)
 	{
 		delete[] m_data;
 	}
-	m_data = new T[M_SIZE]();
+    m_data = new T[M_LEN]();
 }
 
 template<typename T>
 bool CirQueue<T>::isFull()
 {
-	return m_front == ((m_rear + 1) % M_SIZE);
+    return m_front == ((m_rear + 1) % M_LEN);
 }
 
 template<typename T>
@@ -94,7 +114,8 @@ void CirQueue<T>::push(T element)
 		return;
 	}
 	m_data[m_rear] = element;
-	m_rear = (m_rear + 1) % M_SIZE;
+    M_wrpos = m_rear;
+    m_rear = (m_rear + 1) % M_LEN;
 }
 
 template<typename T>
@@ -105,37 +126,57 @@ T CirQueue<T>::pop()
 		printf("The Circle Queue is Empty!!\n");
 		return m_data[m_front];
 	}
-	m_front = (m_front + 1) % M_SIZE;
+    m_front = (m_front + 1) % M_LEN;
+    M_rdpos = m_front - 1;
 	return m_data[m_front - 1];
 }
 
 template<typename T>
-T CirQueue<T>::head()
+T CirQueue<T>::front()
 {
 	return m_data[m_front];
 }
 
 template<typename T>
-T CirQueue<T>::last()
+T* CirQueue<T>::begin()
+{
+    return m_data + m_front;
+}
+
+template<typename T>
+T CirQueue<T>::back()
 {
 	return m_data[m_rear - 1];
 }
 
+
+template<typename T>
+T* CirQueue<T>::end()
+{
+    return m_data + m_rear - 1;
+}
+
+/**
+ * @brief 获取循环队列的分配内存大小(当前可以存储的队列最大长度)
+ */
+template<typename T>
+unsigned long CirQueue<T>::MaxLength()
+{
+    return M_LEN;
+}
+/**
+ * @brief 获取当前队列中有效数据的长度
+ */
 template<typename T>
 unsigned long CirQueue<T>::size()
 {
-	return M_SIZE;
-}
-
-template<typename T>
-unsigned long CirQueue<T>::length()
-{
-	return (m_rear - m_front + M_SIZE) % M_SIZE;
+    return (m_rear - m_front + M_LEN) % M_LEN;
 }
 
 
 template<typename T>
 void CirQueue<T>::clear()
 {
-    delete[] m_data;
+    m_rear = m_front = 0;
 }
+

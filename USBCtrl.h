@@ -5,14 +5,15 @@
 class USBCtrl
 {
 public:
-    USBCtrl(Config *cfig);
+    USBCtrl(const Config *cfig);
     USBCtrl();
     ~USBCtrl();
 public:
 	int USBStart();
 	int USBClose();
     void setParam(int chanCount, int Freq, int bitCount, int lenOfChannal,int pakgPerRead);
-	void setParam(Config *cfig);
+    void setParam(const Config *cfig);
+    void setParam(shared_ptr<GetConfig>& PSgcfg);
 
 	int getDataFromUSB(BYTE* recvBuf);
 

@@ -6,8 +6,39 @@
 #include <string>
 #include <QMessageBox>
 
-PeakSearch::PeakSearch()
+PeakSearch::PeakSearch(shared_ptr<GetConfig>& gcfg, HWND hWnd)
 {
+    m_hWnd = hWnd;
+    PSgcfg = gcfg;
+    USB = new USBCtrl();
+    USB->setParam(PSgcfg);
+    Series = new WzSerialPort();
+    Series->Init(PSgcfg->getConstPointoConfig());
+    SetParam(PSgcfg->getConstPointoConfig());
+
+    for (size_t i = 0; i < 3; i++)
+    {
+        m_peakPos[i] = new int[1024]();
+        m_peakValue[i] = new float[1024]();
+    }
+
+    int len = USB->m_LenofChannels;
+    qDebug()<<"CH1Data len = " << len;
+    CH1Data = new unsigned short[len]();
+    CH1DataAdd = new float[len]();
+
+    CH2Data = new unsigned short[len]();
+    CH2DataAdd =new float[len]();
+
+    CH3Data = new unsigned short[len]();
+    CH3DataAdd = new float[len]();
+
+
+    long LEN = USB->packagePerRead * USB->m_LenofChannels * 3 * USB->m_bitCount / 8;
+    qDebug()<<"RECORD_BUF len = "<< LEN;
+    RECORD_BUF = new BYTE[LEN]();
+
+    ConfigDevice();
 }
 
 PeakSearch::~PeakSearch()
@@ -47,7 +78,7 @@ void PeakSearch::data_calibration(unsigned short step, unsigned short* &data_nee
 }
 
 
-void PeakSearch::SetParam(Config *cfig)
+void PeakSearch::SetParam(const Config *cfig)
 {
     m_ch1TreadHold = cfig->m_Peak->m_ch1ThredHold;
     m_ch2TreadHold = cfig->m_Peak->m_ch2ThredHold;
@@ -205,7 +236,7 @@ void PeakSearch::readTxt2Peak()
     }
 }
 
-void PeakSearch::Init(Config *cfig,HWND hWnd)
+void PeakSearch::Init(const Config *cfig,HWND hWnd)
 {
 	m_hWnd = hWnd;
 
@@ -253,7 +284,7 @@ void PeakSearch::ConfigDevice()
     bool serialSuc = false;
     bool USBSuc = true;
     while(1){
-        Series->WriteCommand(2);
+        Series->WriteCommand(2, PSgcfg);
         Sleep(100);
         if(Series->isSendCommandSuccessful(2)) {
             serialSuc = true;
@@ -270,7 +301,7 @@ void PeakSearch::ConfigDevice()
         }
     }
     Sleep(10);
-    Series->WriteCommand(3);
+    Series->WriteCommand(3, PSgcfg);
 
     cfigSuc = serialSuc && USBSuc;
 }

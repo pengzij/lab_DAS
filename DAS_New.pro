@@ -54,8 +54,7 @@ HEADERS  += mainwindow.h \
     callout.h \
     chartview.h \
     mainwidget.h \
-    recvdata.h \
-    getconfig.h
+    recvdata.h
 
 FORMS    += mainwindow.ui \
     plot.ui \

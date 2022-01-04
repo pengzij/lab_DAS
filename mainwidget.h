@@ -11,6 +11,7 @@
 #include <QTimer>
 #include <list>
 
+#include "Config.h"
 #include "chartview.h"
 #include "callout.h"
 #include "CirQueue.h"
@@ -35,10 +36,9 @@ class MainWidget : public QWidget
 
 public:
     //fre:30对应30kHz tmInterval:25ms时间间隔对应刷新频率50Hz
-    MainWidget(int sendsize = 9000, int fre = 30, int tmInterval = 25, int window_max_x = 10000, int xScale = 10, QWidget *parent = 0);
+    MainWidget(const shared_ptr<GetConfig> gcfg = nullptr, shared_ptr<CirQueue<float>> wavedataque = nullptr, int tmInterval = 25, int window_max_x = 10000, int xScale = 10, QWidget *parent = 0);
     ~MainWidget();
-    void initUI(int );
-    void getpeakNum(int);
+    void initUI();
     int& setSENDSIZE(int &);
 
 
@@ -56,8 +56,9 @@ private:
 
     void initChart();
     void initSlot();
-    void sendData(CirQueue<float>* );
+    void sendData(CirQueue<float>*);
 
+    shared_ptr<CirQueue<float>> WaveDataQue;
     QVector<float> showData;
     list<QPointF> showDataListSTL;
     QList<QPointF> showDataList;
@@ -71,7 +72,6 @@ private:
 
     queue<float> waveQueue;
 
-    QTimer *timer;
     QTimer *timer2;
 
     quint16 count;
@@ -80,7 +80,6 @@ private:
     bool isStopping;
     bool clearWave;
     bool isStop;
-    bool isStopSetRange;
 
     int last_queue_size;
     int cur_queue_size;
@@ -94,16 +93,9 @@ private:
     int SENDSIZE;
 
 public slots:
-
     void updateData(CirQueue<float>* , int);
 
 private slots:
-
-    void updateWave();
-    void timerSlot();
-    void stopSetRange();
-    void startime();
-    void startSetRange();
     void buttonSlot();
     void tipSlot(QPointF position, bool isHovering);
     void flashwave();

@@ -2,9 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "wzserialport.h"
-#include "PeakSearch.h"
-#include "plot.h"
 #include <QDateTime>
 #include <QTimer>
 #include <QTime>
@@ -17,7 +14,10 @@
 #include "CirQueue.h"
 #include "waveform.h"
 #include "mainwidget.h"
-#include "getconfig.h"
+#include "wzserialport.h"
+#include "PeakSearch.h"
+#include "plot.h"
+#include "recvdata.h"
 
 namespace Ui {
 class MainWindow;
@@ -78,12 +78,15 @@ private slots:
 private:
     Ui::MainWindow *ui;
     HWND hWnd;
+    shared_ptr<Config> cfg;
     shared_ptr<GetConfig> getcfg;
     WzSerialPort *serialport;
     PeakSearch *peak;
 
     Plot *plt = NULL;
     MainWidget *wgt = NULL;
+
+    shared_ptr<RecvData> RVD;
 
     Demodulation *Demodu = NULL;
     Demodulation *Demodu_2=NULL;
@@ -104,13 +107,14 @@ private:
 
     unsigned short saveCounter = 0;
     bool CaculationPhase;
+    inline void isShowWindow(Demodulation*);
+    int SENDSIZE;
+    shared_ptr<CirQueue<float>> CHDataQue;
+    shared_ptr<CirQueue<float>> demoduDataQue;
+    shared_ptr<CirQueue<float>> WaveDataQue;
 
     void debugDemudu();
-
-    inline void isShowWindow(Demodulation*);
-
-    int SENDSIZE;
-
+    void debugDemudu(bool);
     bool setShow();
 
 

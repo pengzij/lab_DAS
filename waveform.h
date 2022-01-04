@@ -33,7 +33,7 @@ public:
     ~WaveForm();
 public:
     void WidgetInit();
-    void paramInit(Config *cfig);
+    void paramInit(const Config *cfig);
     void loadExampleData(int index);
 
 
