@@ -39,6 +39,8 @@ MainWidget::MainWidget(const shared_ptr<GetConfig> gcfg, shared_ptr<CirQueue<flo
     LEN_PER = FRE * TIMEINTERVAL * 1.34;
     SHOWDATA_MAX = WINDOW_MAX_X * 10;
     cur_len_per = LEN_PER;
+    setWindowFlags(windowFlags() &~ Qt::WindowCloseButtonHint);//禁止窗口右上角关闭按钮
+    showMaximized();//弹出窗口最大化显示
 }
 
 MainWidget::~MainWidget()

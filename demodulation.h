@@ -108,6 +108,8 @@ private:
     bool Unwraping;
     bool isFilter;
     bool isLPFilter;
+    bool isWaveFiletr;
+    bool isWaveLpFilter;
 
     //bool UnwrapFilter;
     bool isUSBOpen;

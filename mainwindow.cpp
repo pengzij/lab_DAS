@@ -22,7 +22,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-
+    setWindowFlags(Qt::WindowStaysOnTopHint);//主窗口保持顶层
     ui->setupUi(this);
     ui->save_checkBox->setEnabled(false);
     hWnd = (HWND)this->winId();
@@ -342,7 +342,6 @@ void MainWindow::debugDemudu(bool)
 
     RVD->start();//开启接收数据线程
     Demodu->start();//开启解调线程
-    UDP->start();//开启存储线程
     wgt->show();
 }
 

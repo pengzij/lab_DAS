@@ -432,16 +432,31 @@ float Demodulation::unWrap_Filter(const float &ph, const int &i)
         RealPh[i] -= FirstRealPh[i];
         //调用高通滤波器函数
         //float res = ChebysheyII_HP_Filter(RealPh[i], i);
+        if(isWaveFiletr)
+        {
+            Hpfilter(i);
 
-        Hpfilter(i);
+        }
+        else
+        {
+            RealPhOut[i][2] = RealPh[i];
+        }
         float res = RealPhOut[i][2];
 
-        FilterReg[i][0]=LPFilterCoeff[0]*(res-LPFilterCoeff[1]*FilterReg[i][1]-LPFilterCoeff[2]*FilterReg[i][2]-LPFilterCoeff[3]*FilterReg[i][3]-LPFilterCoeff[4]*FilterReg[i][4]);
-        output[i] = LPFilterCoeff[5]*FilterReg[i][0]+LPFilterCoeff[6]*FilterReg[i][1]+LPFilterCoeff[7]*FilterReg[i][2]+LPFilterCoeff[8]*FilterReg[i][3]+LPFilterCoeff[9]*FilterReg[i][4];
-        for(int n=4;n>=1;n--)
+        if(isWaveLpFilter)
         {
-            FilterReg[i][n]=FilterReg[i][n-1];
+            FilterReg[i][0]=LPFilterCoeff[0]*(res-LPFilterCoeff[1]*FilterReg[i][1]-LPFilterCoeff[2]*FilterReg[i][2]-LPFilterCoeff[3]*FilterReg[i][3]-LPFilterCoeff[4]*FilterReg[i][4]);
+            output[i] = LPFilterCoeff[5]*FilterReg[i][0]+LPFilterCoeff[6]*FilterReg[i][1]+LPFilterCoeff[7]*FilterReg[i][2]+LPFilterCoeff[8]*FilterReg[i][3]+LPFilterCoeff[9]*FilterReg[i][4];
+            for(int n=4;n>=1;n--)
+            {
+                FilterReg[i][n]=FilterReg[i][n-1];
+            }
         }
+        else
+        {
+            output[i] = res;
+        }
+
         DisplayQueue->push(output[i]);//显示队列填入带通滤波后数据
         /* 滤波结束开始判断存储队列中存入数据
          * */
@@ -673,7 +688,11 @@ void Demodulation::run()
     /* 在信息窗口中显示相关配置信息
      */
     QString Typeinfo;
-
+    if(!isWaveFiletr)
+        Typeinfo += QString("HpFilter File don't exist");
+    if(!isWaveLpFilter)
+        Typeinfo += QString("LpFilter File don't exist");
+    emit sendShowQString(Typeinfo);
     if(!calcPhase)
     {
         demoduType = SEND_ORIGNAL_DATA;
@@ -753,40 +772,50 @@ void Demodulation::ReadFilterCoeff(float *coeff,float *LPFcoeff, string hpcutoff
 
     qDebug()<<"Filter Coefficient path:"<<pat.toStdString().c_str()<<"  "<<pat2.toStdString().c_str();
 
-    FILE *pFile = fopen(pat.toStdString().c_str(),"rb");
-    FILE *pFile2 = fopen(pat2.toStdString().c_str(),"rb");
-
-    if(pFile == NULL)
+    QFile pFile(pat);
+    QFile pFile2(pat2);
+    if(!pFile.exists())
     {
         char logStr[64];
         sprintf(logStr,"Open %s Failed!.",pat.toStdString().c_str());
-        LOG(logStr,"C:/DAS/log.txt");\
-        QString info = QString("open failed :") + pat;
-        emit sendShowQString(info);
-
+        LOG(logStr,"C:/DAS/log.txt");
+//        QString info = QString("HpFilter file open open failed :") + pat;
+//        emit sendShowQString(info);
+        isWaveFiletr = false;
     }
-    else if(pFile2 == NULL)
+    else
+    {
+        isWaveFiletr = true;
+        ifstream inFile(pat.toStdString().data(), ifstream::binary);
+        for(int i = 0 ; i < FILTERODR; i++)
+        {
+            inFile.read((char*)(coeff + i), sizeof(float));
+            qDebug() << "coeff[" << i << "] = " << coeff[i] << endl;
+        }
+        inFile.close();
+    }
+
+    if(!pFile2.exists())
     {
         char logStr[64];
         sprintf(logStr,"Open %s Failed!.",pat2.toStdString().c_str());
         LOG(logStr,"C:/DAS/log.txt");
-        QString info = QString("open failed :") + pat;
-        emit sendShowQString(info);
+//        QString info = QString("LpFilter file open open failed :") + pat2;
+//        emit sendShowQString(info);
+        isWaveLpFilter = false;
     }
-    else{
-    //QMessageBox::information(NULL,"ButtorWorthFilterCoefficient",pat.toStdString().c_str());
-    fread(coeff,sizeof(float),FILTERODR,pFile);
-    fread(LPFcoeff,sizeof(float),LPFILTERODR,pFile2);
-    qDebug()<<"ReadFilterCoeff&LPFilterCoeff ok";
-    for(int i = 0 ; i < FILTERODR; i++)
-        qDebug() << "coeff[" << i << "] = " << coeff[i] << endl;
-
-    for(int i = 0 ; i < LPFILTERODR; i++)
-        qDebug() << "LPFcoeff[" << i << "] = " << LPFcoeff[i] << endl;
-
+    else
+    {
+        isWaveLpFilter = true;
+        ifstream inFile2(pat2.toStdString().data(), ifstream::binary);
+        for(int i = 0 ; i < LPFILTERODR; i++)
+        {
+            inFile2.read((char*)(LPFcoeff + i), sizeof(float));
+            qDebug() << "LPFcoeff[" << i << "] = " << LPFcoeff[i] << endl;
+        }
+        inFile2.close();
     }
-    fclose(pFile);
-    fclose(pFile2);
+
 }
 
 
