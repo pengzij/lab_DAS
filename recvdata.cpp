@@ -57,15 +57,15 @@ void RecvData::run()
 void RecvData::debugRecvData()
 {
     int hasRecv=0;
-    QString CH1filename = QString("[CH1][30]20211008163701.bin");
+    QString CH1filename = QString("[CH1][10]20220112203715.bin");
     bool CH1filend = false;
     int CH1startpos = 0;
 
-    QString CH2filename = QString("[CH2][30]20211008163701.bin");
+    QString CH2filename = QString("[CH2][10]20220112203715.bin");
     bool CH2filend = false;
     int CH2startpos = 0;
 
-    QString CH3filename = QString("[CH3][30]20211008163701.bin");
+    QString CH3filename = QString("[CH3][10]20220112203715.bin");
     bool CH3filend = false;
     int CH3startpos = 0;
     while(1)

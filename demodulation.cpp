@@ -381,14 +381,13 @@ void Demodulation::demoduPhase()
         for(int j = 0; j < 3; j++)
         {
             float tmp = CHDataque->front();
-
+            //qDebug() << "peaknum = " << i + 1 << " CHnum = " << j + 1 << "data = " << tmp << endl;
             CHDataVc.push_back(tmp);
             if(!calcPhase) DMDataque->push(CHDataque->front());
             CHDataque->pop();
-
         }
-        Vi[i] = CHDataVc[i] + CHDataVc[i + 1] - 2 * CHDataVc[i + 2];
-        Vq[i] = -sqrt(3.0000) * (CHDataVc[i] - CHDataVc[i + 1]);
+        Vi[i] = CHDataVc[3 * i] + CHDataVc[3 * i + 1] - 2 * CHDataVc[3 * i + 2];
+        Vq[i] = -sqrt(3.0000) * (CHDataVc[3 * i] - CHDataVc[3 * i + 1]);
 
         /*********相位解调*********/
         //Ph[i] = atan2(Vi[i],Vq[i]);
@@ -556,15 +555,15 @@ void Demodulation::debugRunDemodu()
     int term = 0;
     int hasRecv=0;
 
-    QString CH1filename = QString("[CH1][30]20211008163701.bin");
+    QString CH1filename = QString("[CH1][10]20220112203715.bin");
     bool CH1filend = false;
     int CH1startpos = 0;
 
-    QString CH2filename = QString("[CH2][30]20211008163701.bin");
+    QString CH2filename = QString("[CH2][10]20220112203715.bin");
     bool CH2filend = false;
     int CH2startpos = 0;
 
-    QString CH3filename = QString("[CH3][30]20211008163701.bin");
+    QString CH3filename = QString("[CH3][10]20220112203715.bin");
     bool CH3filend = false;
     int CH3startpos = 0;
     is_demoduRun = true;
