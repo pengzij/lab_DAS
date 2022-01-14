@@ -456,7 +456,12 @@ float Demodulation::unWrap_Filter(const float &ph, const int &i)
             output[i] = res;
         }
 
-        DisplayQueue->push(output[i]);//显示队列填入带通滤波后数据
+        if(!(DisplayQueue->isFull())) DisplayQueue->push(output[i]);//显示队列填入带通滤波后数据
+        else
+        {
+            emit sendShowQString(QString("DisplayQueue is full, clear all exist data"));
+            DisplayQueue->clear();
+        }
         /* 滤波结束开始判断存储队列中存入数据
          * */
         if(isFilter && isLPFilter) return output[i];//带通滤波后数据
@@ -742,14 +747,14 @@ void Demodulation::run()
         if(!is_demoduRun) return;//外界关闭解调循环
         if(CHDataque->size() < 3 * peakNum * OnceDemoduNum)//单次解调线程循环的最少解调数据量为0.1s数据
         {
-            qDebug() << "waiting...";
+            //qDebug() << "waiting...";
             msleep(50);//原始数据队列中数据过少，线程等待0.05s
         }
         else
         {
             int num = 0;
             while(++num <= OnceDemoduNum) demoduPhase();
-            qDebug() << "DMque size = " << DMDataque->size() << endl;
+            //qDebug() << "DMque size = " << DMDataque->size() << endl;
         }
 
 

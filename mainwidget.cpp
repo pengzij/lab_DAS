@@ -19,12 +19,11 @@ MainWidget::MainWidget(const shared_ptr<GetConfig> gcfg, shared_ptr<CirQueue<flo
     WaveDataQue(wavedataque),
     TIMEINTERVAL(tmInterval),//定时器时间间隔
     FRE(gcfg->getConfig_freqency() / 1000),//频率
-    WINDOW_MAX_X(window_max_x),//窗口x轴范围
+    //WINDOW_MAX_X(window_max_x),//窗口x轴范围
     XSACLE(xScale),//x轴时间刻度
     tip(0),
     count(0),
     isStopping(false),
-    isStop(false),
     wavecase(0),
     cur_x(0),
     last_queue_size(0),
@@ -34,9 +33,12 @@ MainWidget::MainWidget(const shared_ptr<GetConfig> gcfg, shared_ptr<CirQueue<flo
     clearWave(true),
     lastShowpeakNum(-1)//初始化为不可能的数据
 {
+    isStop = make_shared<bool>(false);
     ui->setupUi(this);
+    timer2->setTimerType(Qt::PreciseTimer);
     timer2->setInterval(TIMEINTERVAL);
-    LEN_PER = FRE * TIMEINTERVAL * 1.34;
+    LEN_PER = FRE * TIMEINTERVAL;
+    WINDOW_MAX_X = FRE * 1000 * 0.5;//窗口显示0.5s的数据
     SHOWDATA_MAX = WINDOW_MAX_X * 10;
     cur_len_per = LEN_PER;
     setWindowFlags(windowFlags() &~ Qt::WindowCloseButtonHint);//禁止窗口右上角关闭按钮
@@ -56,16 +58,82 @@ MainWidget::~MainWidget()
     qDebug() << "MainWidget deconstruct success" << endl;
 }
 
+void MainWidget::zoom_X(pair<double, double>& pair_x, const double zoomValue)
+{
+    double rangeL_x = double(pair_x.first * zoomValue);
+    double rangeR_x = double(pair_x.second * zoomValue);
+    pair_x = std::make_pair(rangeL_x, rangeR_x);
+}
+
+void MainWidget::zoom_Y(pair<double, double>& pair_y, const double zoomValue)
+{
+    double rangeR_y = pair_y.second + (zoomValue - 1) * WINDOW_MAX_X;
+    if(rangeR_y < 0) return;
+    double rangeL_y = -1 * rangeR_y;
+    pair_y = std::make_pair(rangeL_y, rangeR_y);
+}
+
 
 void MainWidget::wheelEvent(QWheelEvent *event)
 {
-    if (event->delta() > 0) {
-        chart->zoom(1.6);
-    } else {
-        chart->zoom(9.5/11);
+    if(*isStop)
+    {
+        if(chartView->resetZoom)
+        {
+            chartView->resetZoom = false;
+            cur_windowRange_x = make_pair(0, WINDOW_MAX_X);
+            cur_windowRange_y = make_pair(-1 * WINDOW_MAX_Y, WINDOW_MAX_Y);
+
+        }
+
+        if(!chartView->m_ctrlPress)
+        {
+            /* keep axis X unchanged
+             */
+            if (event->delta() > 0)
+            {
+                chart->zoom(1.1);
+
+                QValueAxis* axisY = dynamic_cast<QValueAxis*>(chart->axisY());
+                cur_windowRange_y.first = axisY->min();
+                cur_windowRange_y.second = axisY->max();
+            }
+            else
+            {
+                chart->zoom(0.9);
+                QValueAxis* axisY = dynamic_cast<QValueAxis*>(chart->axisY());
+                cur_windowRange_y.first = axisY->min();
+                cur_windowRange_y.second = axisY->max();
+            }
+            chart->axisX()->setRange(cur_windowRange_x.first, cur_windowRange_x.second);
+        }
+        else
+        {
+            /* keep axis Y unchanged
+             */
+            if (event->delta() > 0)
+            {
+                chart->zoom(1.1);
+
+                QValueAxis* axisX = dynamic_cast<QValueAxis*>(chart->axisX());
+                cur_windowRange_x.first = axisX->min();
+                cur_windowRange_x.second = axisX->max();
+            }
+            else
+            {
+                chart->zoom(10.0/11);
+                QValueAxis* axisX = dynamic_cast<QValueAxis*>(chart->axisX());
+                cur_windowRange_x.first = axisX->min();
+                cur_windowRange_x.second = axisX->max();
+            }
+
+            chart->
+                    axisY()->setRange(cur_windowRange_y.first, cur_windowRange_y.second);
+        }
+        //qDebug() << "x.first = " << cur_windowRange_x.first << " x.second = " << cur_windowRange_x.second << endl;
+        QWidget::wheelEvent(event);
     }
 
-    QWidget::wheelEvent(event);
 }
 
 void MainWidget::initUI()
@@ -93,8 +161,10 @@ void MainWidget::initChart()
 
     chart->createDefaultAxes();
 
-    chart->axisY()->setRange(-3, 3);
+    chart->axisY()->setRange(-1 * WINDOW_MAX_Y, WINDOW_MAX_Y);
+    cur_windowRange_y = std::make_pair(-1 * WINDOW_MAX_Y, WINDOW_MAX_Y);
     chart->axisX()->setRange(0, WINDOW_MAX_X);
+    cur_windowRange_x = std::make_pair(0, WINDOW_MAX_X);
 
     chart->axisX()->setTitleFont(QFont("Microsoft YaHei", 10, QFont::Normal, true));
     chart->axisY()->setTitleFont(QFont("Microsoft YaHei", 10, QFont::Normal, true));
@@ -107,7 +177,7 @@ void MainWidget::initChart()
     /* hide legend */
     chart->legend()->hide();
 
-    chartView = new ChartView(chart);
+    chartView = new ChartView(chart, isStop);
     chartView->setRenderHint(QPainter::Antialiasing);
 
     ui->mainHorLayout->addWidget(chartView);
@@ -161,16 +231,15 @@ void MainWidget::sendData(CirQueue<float> *que)
 
 void MainWidget::flashwave()
 {
-    qDebug() << "cur_queue_size = " << cur_queue_size;
-    qDebug() << "cur_len_per = " << cur_len_per;
-    qDebug() << "WaveDataQue size = " << WaveDataQue->size() << endl;
+//    qDebug() << "cur_queue_size = " << cur_queue_size;
+//    qDebug() << "cur_len_per = " << cur_len_per;
+//    qDebug() << "WaveDataQue size = " << WaveDataQue->size() << endl;
     /*判断queue中数据长度满足一次刷新*/
     if(WaveDataQue->size() >= cur_len_per * peakNum)
     {
-        if(isStop)
+        if(*isStop)
         {
-            int num = peakNum * cur_len_per;
-            while(num--) WaveDataQue->pop();
+            WaveDataQue->clear();
         }
         else
         {
@@ -178,7 +247,7 @@ void MainWidget::flashwave()
             QVector<QPointF> oldData = series->pointsVector();
             QVector<QPointF> flashdata;
 
-            if (oldData.size() < WINDOW_MAX_X)
+            if (oldData.size() <= WINDOW_MAX_X - cur_len_per)
             {
                 flashdata = series->pointsVector();
             }
@@ -187,10 +256,11 @@ void MainWidget::flashwave()
                 /* 添加之前老的数据到新的vector中，不复制最前的数据，即每次替换前面的数据
                  * 由于这里每次只添加1个数据，所以为1，使用时根据实际情况修改
                  */
-
-                for (i = 1; i < oldData.size() - cur_len_per; ++i)
+                /* 将x轴从 [cur_len_per, WINDOW_MAX_X]的点移动到[0, WINDOW_MAX_X - cur_len_per - 1]
+                 */
+                for (i = 0; i < WINDOW_MAX_X - cur_len_per; ++i)
                 {
-                    flashdata.append(QPointF( i - 1 , oldData.at(i + cur_len_per).y()));
+                    flashdata.append(QPointF(i, oldData.at(i + cur_len_per).y()));
                 }
             }
 
@@ -221,24 +291,6 @@ void MainWidget::flashwave()
         }
     }
 
-
-
-//        if(!isStop)//暂停显示
-//        {
-//            series->replace(flashdata);
-//        }
-//        else
-//        {
-//            clearWave = true;
-//        }
-
-//        if(clearWave & !isStop)//开始显示后，清除波形
-//        {
-//            clearWave = false;
-//            series->clear();
-//        }
-//    }
-
 }
 
 
@@ -247,11 +299,11 @@ void MainWidget::buttonSlot()
 {
     if (QObject::sender() == ui->stopBtn) {
         if (!isStopping) {
-            isStop = true;
+            *isStop = true;
             ui->stopBtn->setText("开始");
 
         } else {
-            isStop = false;
+            *isStop = false;
             ui->stopBtn->setText("暂停");
             series->clear();//重新开始显示，清空曲线
 
@@ -262,17 +314,21 @@ void MainWidget::buttonSlot()
 
 void MainWidget::tipSlot(QPointF position, bool isHovering)
 {
-    if (tip == 0)
-        tip = new Callout(chart);
+    if(*isStop)//暂停时开启
+    {
+        if (tip == 0)
+            tip = new Callout(chart);
 
-    if (isHovering) {
-        tip->setText(QString("X: %1 \nY: %2 ").arg(position.x()).arg(position.y()));
-        tip->setAnchor(position);
-        tip->setZValue(11);
-        tip->updateGeometry();
-        tip->show();
-    } else {
-        tip->hide();
+        if (isHovering) {
+            tip->setText(QString("X: %1 \nY: %2 ").arg(position.x()).arg(position.y()));
+            tip->setAnchor(position);
+            tip->setZValue(11);
+            tip->updateGeometry();
+            tip->show();
+        } else {
+            tip->hide();
+        }
     }
+
 }
 

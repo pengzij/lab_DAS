@@ -70,7 +70,7 @@ void RecvData::debugRecvData()
     int CH3startpos = 0;
     while(1)
     {
-        qDebug() << "CHDATA size" << CHdata->size() << endl;
+        //qDebug() << "CHDATA size" << CHdata->size() << endl;
         if(!is_RecvRun) return;//关闭读取数据死循环
 //        if(CHdata->size() > 900 * 100 ^3)
 //        {
@@ -107,7 +107,7 @@ void RecvData::debugRecvData()
         debugCH1Data->clear();
         debugCH2Data->clear();
         debugCH3Data->clear();
-        qDebug() << "recv run end" << endl;
+        //qDebug() << "recv run end" << endl;
     }
 }
 

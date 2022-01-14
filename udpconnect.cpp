@@ -132,7 +132,7 @@ void UDPConnect::checkSaveSlot()
     saveNum = saveDataQue->size();
     if(saveNum >= onceSaveNum)
     {
-    qDebug() << "saveque size = " << saveNum << endl;
+    //qDebug() << "saveque size = " << saveNum << endl;
         if(is_saveData)
         {
             if(DataType == SEND_ORIGNAL_DATA)

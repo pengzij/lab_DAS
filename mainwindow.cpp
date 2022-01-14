@@ -149,7 +149,7 @@ void MainWindow::on_Eazystart_Button_clicked()
         connect(this, &MainWindow::sendPeakPosDone, this, &MainWindow::on_Demodu_Button_clicked);
     }
 
-    QString info = QString("Version Inmormation: v0.4.4 \n") + QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\teazystart finish, demodulation running...");
+    QString info = QString("Version Inmormation: v0.4.5 \n") + QDateTime::currentDateTime().toString("yyyy-MM-dd\t") + SystemTime.toString()+QString("\teazystart finish, demodulation running...");
     ui->StateText->append(info);
 
 }

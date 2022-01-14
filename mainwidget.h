@@ -25,6 +25,7 @@ QT_CHARTS_USE_NAMESPACE
 //#define WINDOW_MAX_X 10000 //窗口x轴范围
 //#define SHOWDATA_MAX WINDOW_MAX_X * 10//历史数据最大长度
 //#define XSACLE 10//x轴时间刻度
+#define WINDOW_MAX_Y 3.0
 
 namespace Ui {
 class MainWidget;
@@ -35,8 +36,8 @@ class MainWidget : public QWidget
     Q_OBJECT
 
 public:
-    //fre:30对应30kHz tmInterval:25ms时间间隔对应刷新频率50Hz
-    MainWidget(const shared_ptr<GetConfig> gcfg = nullptr, shared_ptr<CirQueue<float>> wavedataque = nullptr, int tmInterval = 25, int window_max_x = 10000, int xScale = 10, QWidget *parent = 0);
+    //fre:30对应30kHz tmInterval:20ms时间间隔对应刷新频率50Hz
+    MainWidget(const shared_ptr<GetConfig> gcfg = nullptr, shared_ptr<CirQueue<float>> wavedataque = nullptr, int tmInterval = 20, int window_max_x = 10000, int xScale = 10, QWidget *parent = 0);
     ~MainWidget();
     void initUI();
     int& setSENDSIZE(int &);
@@ -49,15 +50,6 @@ private:
     int WINDOW_MAX_X;//窗口x轴范围
     int SHOWDATA_MAX;//历史数据最大长度
     int XSACLE;//x轴时间刻度
-
-
-private:
-    void wheelEvent(QWheelEvent *event);
-
-    void initChart();
-    void initSlot();
-    void sendData(CirQueue<float>*);
-
     shared_ptr<CirQueue<float>> WaveDataQue;
     QVector<float> showData;
     list<QPointF> showDataListSTL;
@@ -79,7 +71,7 @@ private:
     bool isUpdataing;
     bool isStopping;
     bool clearWave;
-    bool isStop;
+    std::shared_ptr<bool> isStop;
 
     int last_queue_size;
     int cur_queue_size;
@@ -91,6 +83,16 @@ private:
     int cur_x;
     int cur_show_x;
     int SENDSIZE;
+    pair<double, double> cur_windowRange_x;
+    pair<double, double> cur_windowRange_y;
+
+    void wheelEvent(QWheelEvent *event);
+
+    void initChart();
+    void initSlot();
+    void sendData(CirQueue<float>*);
+    void zoom_X(pair<double, double>& pair_x, const double zoomValue);
+    void zoom_Y(pair<double, double>& pair_y, const double zoomValue);
 
 public slots:
     void updateData(CirQueue<float>* , int);
