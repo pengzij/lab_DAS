@@ -183,6 +183,7 @@ public:
     string hpcutoff;
     string lpcutoff;
     bool soundSave;
+    bool startSaveSound;
 
     vector<float> vSound;
 

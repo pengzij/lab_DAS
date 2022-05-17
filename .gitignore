@@ -1,7 +1,13 @@
 debug
 .vscode
+.obsidian
+.qmake.stash
 release
 Makefile.Debug
 Makefile.Release
 object_script.DAS_New.Debug
 object_script.DAS_New.Release
+DAS_New.pro.user.7f542ba
+DAS_New.pro.user.079ab02
+DAS_New.pro.user.b226c30
+version.md

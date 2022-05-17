@@ -45,6 +45,7 @@ Demodulation::Demodulation(bool setSHow, const shared_ptr<GetConfig> gcfg, share
     frequency(gcfg->getConfig_freqency()),
     demoduStop(false),
     soundSave(false),
+    startSaveSound(false),
     is_demoduRun(true),
     SENDSIZE(frequency / 100),
     OnceDemoduNum(frequency / 100)//单次解调线程循环的处理数据长度
@@ -375,7 +376,8 @@ void Demodulation::Hpfilter(int i)
 
 void Demodulation::demoduPhase()
 {
-
+    if(soundSave) startSaveSound = true;
+    else startSaveSound = false;
     for(int i = 0; i < peakNum; i++)
     {
         for(int j = 0; j < 3; j++)
@@ -464,6 +466,7 @@ float Demodulation::unWrap_Filter(const float &ph, const int &i)
         }
         /* 滤波结束开始判断存储队列中存入数据
          * */
+        if(startSaveSound) vSound.push_back(output[i]);
         if(isFilter && isLPFilter) return output[i];//带通滤波后数据
         else if(isFilter) return res;//高通滤波后数据
         else return RealPh[i];//无滤波数据

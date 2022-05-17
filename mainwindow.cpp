@@ -516,13 +516,14 @@ void MainWindow::on_Play_Button_clicked()
     float *bufAll;
     int regionNum = Demodu->peakNum;
     int vSize = Demodu->vSound.size();
+    cout << "vSize = " << vSize << " regionNum = " << regionNum << endl;
     bufAll = new float[vSize];
     int len = vSize/regionNum;
     buf = new float[len];
     ui->StateText->append("wave len = " + QString::number(len));
     //cout << "total len = " << len << endl;
     vector<float>::iterator vb = Demodu->vSound.begin();
-    vb += region.toInt() - 1;//
+    vb += (region.toInt() - 1 + regionNum) % (regionNum);//
     for (int i = 0;i != len;i++)
     {
         buf[i] = *vb;
@@ -533,7 +534,7 @@ void MainWindow::on_Play_Button_clicked()
 
     /*--------------------------------------------保存bin-----------------------------------------*/
     FILE *file3;
-    file3 = fopen("D:/DAS/test.bin","wb+");
+    file3 = fopen("C:/DAS/test.bin","wb+");
     vb = Demodu->vSound.begin();
     for (int i = 0;i != vSize;i++)
     {
@@ -550,7 +551,9 @@ void MainWindow::on_Play_Button_clicked()
 
     head.FMTSize = 16;//fmt块长度
     head.AudioFormat = 3;
+    wavFre = Demodu->frequency;
     head.SampleRate = wavFre;
+    cout << "wavFre = " << wavFre << endl;
     head.ByteRate = wavFre*sizeof(float);
     head.BlockAlign = 4;
     head.BitPerSample = 32;
@@ -561,7 +564,7 @@ void MainWindow::on_Play_Button_clicked()
 
     /*--------------------------------------------存入wav-----------------------------------------*/
     FILE *file2;
-    string path0 = "D:/DAS/";
+    string path0 = "C:/DAS/";
     QString path1 = QString(path0.c_str())+QString::number(region.toInt()) + QString(".wav");
     string path2 = path1.toStdString().c_str();
 
