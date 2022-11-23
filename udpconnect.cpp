@@ -516,7 +516,7 @@ void UDPConnect::changeFileNameOnce(QDateTime &systemDate, QTime &systemTime)
 
     if(DataType == SEND_ORIGNAL_DATA)
     {
-
+        cout << saveFolder << endl;
         saveFilename1 = QString(saveFolder.c_str())+QString("/[CH1][")+QString::number(PeakNum)
                 +QString("]")+systemDate.toString("yyyyMMdd")+systemTime.toString("hhmmss") + QString(".bin");
         saveFilename2 = QString(saveFolder.c_str())+QString("/[CH2][")+QString::number(PeakNum)
